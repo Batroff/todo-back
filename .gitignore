@@ -1,0 +1,7 @@
+# logs
+*.log
+
+# env
+flaskenv
+.idea
+__pycache__

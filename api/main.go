@@ -10,7 +10,7 @@ import (
 import _ "github.com/lib/pq"
 
 func main() {
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "postgres", "root", "localhost", 5432, "todo")
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "postgres", "root", "localhost", 5432, "postgres")
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatalf("Error occured during db connection. err: %s", err.Error())

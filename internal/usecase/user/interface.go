@@ -10,7 +10,7 @@ type Reader interface {
 
 type Writer interface {
 	Create(u *entity.User) (id entity.ID, err error)
-	Update(id entity.ID, u *entity.User) error
+	Update(u *entity.User) error
 	Delete(id entity.ID) error
 }
 

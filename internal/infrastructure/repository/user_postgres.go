@@ -16,8 +16,16 @@ func NewUserMySQL(db *sql.DB) *UserPostgres {
 }
 
 // Get : find in repository ONLY ONE user<entity.User> by entity.ID
-func (userPostgres *UserPostgres) Get(id entity.ID) (u *entity.User, err error) {
-	err = userPostgres.db.QueryRow("select * from users where id = $1", id).Scan(&u.ID, &u.Login, &u.Password, &u.CreatedAt)
+func (userPostgres *UserPostgres) Get(id entity.ID) (*entity.User, error) {
+	u := new(entity.User)
+	err := userPostgres.db.QueryRow("select * from users where id_user = $1", id).Scan(
+		&u.ID,
+		&u.Login,
+		&u.Email,
+		&u.Password,
+		&u.CreatedAt,
+		&u.ImageID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -32,11 +40,18 @@ func (userPostgres *UserPostgres) Find(query string) (users []*entity.User, err 
 		return nil, err
 	}
 
-	// TODO : Create general func for appending users through rows iteration
+	// TODO : ? Create general func for appending users through rows iteration
 	for rows.Next() {
 		u := new(entity.User)
 
-		err := rows.Scan(&u.ID, &u.Login, &u.Password, &u.CreatedAt)
+		err := rows.Scan(
+			&u.ID,
+			&u.Login,
+			&u.Email,
+			&u.Password,
+			&u.CreatedAt,
+			&u.ImageID,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +78,14 @@ func (userPostgres *UserPostgres) List() (users []*entity.User, err error) {
 	for rows.Next() {
 		u := new(entity.User)
 
-		err := rows.Scan(&u.ID, &u.Login, &u.Password, &u.CreatedAt)
+		err := rows.Scan(
+			&u.ID,
+			&u.Login,
+			&u.Email,
+			&u.Password,
+			&u.CreatedAt,
+			&u.ImageID,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -81,8 +103,13 @@ func (userPostgres *UserPostgres) List() (users []*entity.User, err error) {
 
 // Create : create user<entity.User> in repository
 func (userPostgres *UserPostgres) Create(u *entity.User) (id entity.ID, err error) {
-	_, err = userPostgres.db.Exec(`insert into users(id, login, password, createdAt) values($1, $2, $3, $4)`,
-		u.ID, u.Login, u.Password, u.CreatedAt)
+	query, err := userPostgres.db.Prepare(`insert into users(id_user, login, email, password, created_at, id_image) values($1, $2, $3, $4, $5, $6)`)
+	if err != nil {
+		return entity.ID{}, err
+	}
+
+	_, err = query.Exec(u.ID, u.Login, u.Email, u.Password, u.CreatedAt, u.ImageID)
+
 	if err != nil {
 		return entity.ID{}, err
 	}
@@ -91,13 +118,26 @@ func (userPostgres *UserPostgres) Create(u *entity.User) (id entity.ID, err erro
 }
 
 // Update : update user<entity.User> in repository
-func (userPostgres *UserPostgres) Update(id entity.ID, u *entity.User) error {
-	// TODO : implement Update
+func (userPostgres *UserPostgres) Update(u *entity.User) error {
+	query, err := userPostgres.db.Prepare("update users set login = $1, email = $2, password = $3, id_image = $4 where id_user = $5")
+	if err != nil {
+		return err
+	}
+
+	_, err = query.Exec(u.Login, u.Email, u.Password, u.ImageID, u.ID)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // Delete : delete user<entity.User> in repository
 func (userPostgres *UserPostgres) Delete(id entity.ID) error {
-	// TODO : implement Delete
+	_, err := userPostgres.db.Exec(`delete from users where id_user = $1`, id)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

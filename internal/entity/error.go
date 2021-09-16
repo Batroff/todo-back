@@ -11,3 +11,9 @@ type ErrNotFound struct{}
 func (err *ErrNotFound) Error() string {
 	return "Entities not found"
 }
+
+type ErrEntityAlreadyExists struct{}
+
+func (err *ErrEntityAlreadyExists) Error() string {
+	return "Entity already exists in repo"
+}

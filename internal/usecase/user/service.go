@@ -35,13 +35,13 @@ func (s *Service) GetUsersList() (u []*entity.User, err error) {
 	return s.rep.List()
 }
 
-func (s *Service) CreateUser(login, password string) (id entity.ID, err error) {
-	u := entity.NewUser(login, password)
+func (s *Service) CreateUser(login, email, password string) (id entity.ID, err error) {
+	u := entity.NewUser(login, email, password)
 	return s.rep.Create(u)
 }
 
-func (s *Service) UpdateUser(id entity.ID, u *entity.User) error {
-	return s.rep.Update(id, u)
+func (s *Service) UpdateUser(u *entity.User) error {
+	return s.rep.Update(u)
 }
 
 func (s *Service) DeleteUser(id entity.ID) error {

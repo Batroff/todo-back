@@ -6,8 +6,10 @@ import (
 	"github.com/batroff/todo-back/api/handler"
 	"github.com/batroff/todo-back/internal/infrastructure/repository"
 	"github.com/batroff/todo-back/internal/usecase/user"
+	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"github.com/urfave/negroni"
 	_ "github.com/urfave/negroni" // Add
 	"log"
 	"net/http"
@@ -28,19 +30,20 @@ func main() {
 	}()
 
 	userRepo := repository.NewUserMySQL(db)
-	_ = user.NewService(userRepo)
-	// TODO : add service handler
+	userService := user.NewService(userRepo)
 
-	r := mux.NewRouter().
-		Schemes("http", "https").
-		PathPrefix("/api/")
-	r.HandlerFunc(handler.UserCreateHandler)
+	r := mux.NewRouter()
+	//r.Schemes("http", "https").PathPrefix("/api")
+
+	n := negroni.New()
+	http.Handle("/", r)
+	handler.MakeUserHandlers(r, *n, userService)
 
 	srv := &http.Server{
-		Addr:         "0.0.0.0:3000",
+		Addr:         "0.0.0.0:5000",
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
-		Handler:      r.GetHandler(),
+		Handler:      context.ClearHandler(http.DefaultServeMux),
 	}
 
 	log.Fatal(srv.ListenAndServe())

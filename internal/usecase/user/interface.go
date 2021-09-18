@@ -18,8 +18,8 @@ type UseCase interface {
 	GetUser(id entity.ID) (u *entity.User, err error)
 	FindUserByLogin(login string) (u *entity.User, err error)
 	GetUsersList() (u []*entity.User, err error)
-	CreateUser(login, password string) (id entity.ID, err error)
-	UpdateUser(id entity.ID, u *entity.User) error
+	CreateUser(login, email, password string) (id entity.ID, err error)
+	UpdateUser(u *entity.User) error
 	DeleteUser(id entity.ID) error
 }
 

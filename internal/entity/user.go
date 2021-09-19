@@ -5,13 +5,15 @@ import (
 )
 
 type User struct {
-	ID        ID
-	Login     string
-	Email     string
-	Password  string
-	CreatedAt time.Time
-	ImageID   ID
+	ID        ID        `json:"id"`
+	Login     string    `json:"login"`
+	Email     string    `json:"email"`
+	Password  string    `json:"password"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	ImageID   ID        `json:"image_id,omitempty"`
 }
+
+type Users []User
 
 func NewUser(login, email, password string) *User {
 	return &User{

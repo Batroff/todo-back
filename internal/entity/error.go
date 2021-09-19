@@ -1,19 +1,7 @@
 package entity
 
-type ErrExpectedOneEntity struct{}
+import "errors"
 
-func (err *ErrExpectedOneEntity) Error() string {
-	return "Expected only one entity, got many"
-}
+var ErrNotFound = errors.New("entities not found")
 
-type ErrNotFound struct{}
-
-func (err *ErrNotFound) Error() string {
-	return "Entities not found"
-}
-
-type ErrEntityAlreadyExists struct{}
-
-func (err *ErrEntityAlreadyExists) Error() string {
-	return "Entity already exists in repo"
-}
+//var ErrEntityAlreadyExists = errors.New("entity already exists in repo")

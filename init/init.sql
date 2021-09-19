@@ -2,7 +2,7 @@
 
 /* Create Tables */
 
-CREATE TABLE annotation
+CREATE TABLE IF NOT EXISTS annotation
 (
 	id_annotation uuid NOT NULL,
 	text varchar(255) NOT NULL,
@@ -12,14 +12,14 @@ CREATE TABLE annotation
 ) WITHOUT OIDS;
 
 
-CREATE TABLE client_team_xref
+CREATE TABLE IF NOT EXISTS client_team_xref
 (
 	id_user uuid NOT NULL,
 	id_team uuid NOT NULL
 ) WITHOUT OIDS;
 
 
-CREATE TABLE image
+CREATE TABLE IF NOT EXISTS image
 (
 	id_image uuid NOT NULL,
 	width float NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE image
 ) WITHOUT OIDS;
 
 
-CREATE TABLE invitation
+CREATE TABLE IF NOT EXISTS invitation
 (
 	id_invitation uuid NOT NULL,
 	email varchar(255) NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE invitation
 ) WITHOUT OIDS;
 
 
-CREATE TABLE task
+CREATE TABLE IF NOT EXISTS task
 (
 	id_task uuid NOT NULL,
 	title varchar(255) NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE task
 ) WITHOUT OIDS;
 
 
-CREATE TABLE team
+CREATE TABLE IF NOT EXISTS team
 (
 	id_team uuid NOT NULL,
 	name varchar(255) NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE team
 ) WITHOUT OIDS;
 
 
-CREATE TABLE todo
+CREATE TABLE IF NOT EXISTS todo
 (
 	id_todo uuid NOT NULL,
 	text varchar(255) NOT NULL,
@@ -70,14 +70,14 @@ CREATE TABLE todo
 ) WITHOUT OIDS;
 
 
-CREATE TABLE users
+CREATE TABLE IF NOT EXISTS users
 (
 	id_user uuid NOT NULL,
 	login varchar(255) NOT NULL,
 	email varchar(255) NOT NULL,
 	password varchar(255) NOT NULL,
 	created_at timestamp NOT NULL,
-	id_image uuid,
+	id_image uuid DEFAULT NULL,
 	PRIMARY KEY (id_user)
 ) WITHOUT OIDS;
 
@@ -156,6 +156,9 @@ ALTER TABLE task
 	ON DELETE RESTRICT
 ;
 
+/* Init default image */
+INSERT INTO image(id_image, width, height, rel_path)
+VALUES ('00000000-0000-0000-0000-000000000000', 0.0, 0.0, '');
 
 
 /* Comments */

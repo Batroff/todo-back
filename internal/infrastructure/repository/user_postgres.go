@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/batroff/todo-back/internal/entity"
 	"log"
 )
@@ -26,7 +27,9 @@ func (userPostgres *UserPostgres) Get(id entity.ID) (*entity.User, error) {
 		&u.CreatedAt,
 		&u.ImageID,
 	)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		return nil, entity.ErrNotFound
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -34,12 +37,11 @@ func (userPostgres *UserPostgres) Get(id entity.ID) (*entity.User, error) {
 }
 
 // Find : find in repository users<entity.User> by query
-func (userPostgres *UserPostgres) Find(query string) (users []*entity.User, err error) {
-	rows, err := userPostgres.db.Query("select * from users where login = $1", query)
+func (userPostgres *UserPostgres) Find(key string, value interface{}) (users []*entity.User, err error) {
+	rows, err := userPostgres.db.Query(fmt.Sprintf("select * from users where %s = $1", key), value)
 	if err != nil {
 		return nil, err
 	}
-
 	// TODO : ? Create general func for appending users through rows iteration
 	for rows.Next() {
 		u := new(entity.User)
@@ -61,7 +63,7 @@ func (userPostgres *UserPostgres) Find(query string) (users []*entity.User, err 
 	defer func() {
 		if err := rows.Close(); err != nil {
 			// TODO: logger in UserPostgres struct
-			log.Fatalf("Error during closing rows in UserPostgres")
+			log.Printf("Error during closing rows in UserPostgres")
 		}
 	}()
 
@@ -94,7 +96,7 @@ func (userPostgres *UserPostgres) List() (users []*entity.User, err error) {
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Fatalf("Error during closing rows in UserPostgres")
+			log.Printf("Error during closing rows in UserPostgres")
 		}
 	}()
 
@@ -102,16 +104,20 @@ func (userPostgres *UserPostgres) List() (users []*entity.User, err error) {
 }
 
 // Create : create user<entity.User> in repository
-func (userPostgres *UserPostgres) Create(u *entity.User) (id entity.ID, err error) {
+func (userPostgres *UserPostgres) Create(u *entity.User) (entity.ID, error) {
 	query, err := userPostgres.db.Prepare(`insert into users(id_user, login, email, password, created_at, id_image) values($1, $2, $3, $4, $5, $6)`)
 	if err != nil {
 		return entity.ID{}, err
 	}
 
-	_, err = query.Exec(u.ID, u.Login, u.Email, u.Password, u.CreatedAt, u.ImageID)
+	if &u.ImageID == new(entity.ID) {
+		_, err = query.Exec(u.ID, u.Login, u.Email, u.Password, u.CreatedAt, nil)
+	} else {
+		_, err = query.Exec(u.ID, u.Login, u.Email, u.Password, u.CreatedAt, u.ImageID)
+	}
 
 	if err != nil {
-		return entity.ID{}, err
+		return u.ID, err
 	}
 
 	return u.ID, nil
@@ -134,9 +140,12 @@ func (userPostgres *UserPostgres) Update(u *entity.User) error {
 
 // Delete : delete user<entity.User> in repository
 func (userPostgres *UserPostgres) Delete(id entity.ID) error {
-	_, err := userPostgres.db.Exec(`delete from users where id_user = $1`, id)
+	res, err := userPostgres.db.Exec(`delete from users where id_user = $1`, id)
 	if err != nil {
 		return err
+	}
+	if rows, err := res.RowsAffected(); rows == 0 && err == nil {
+		return entity.ErrNotFound
 	}
 
 	return nil

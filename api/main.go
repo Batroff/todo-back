@@ -33,11 +33,10 @@ func main() {
 	userService := user.NewService(userRepo)
 
 	r := mux.NewRouter()
-	//r.Schemes("http", "https").PathPrefix("/api")
-
 	n := negroni.New()
-	http.Handle("/", r)
+
 	handler.MakeUserHandlers(r, *n, userService)
+	http.Handle("/", r)
 
 	srv := &http.Server{
 		Addr:         "0.0.0.0:5000",

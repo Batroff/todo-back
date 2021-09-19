@@ -16,19 +16,17 @@ func (s *Service) GetUser(id entity.ID) (u *entity.User, err error) {
 	return s.rep.Get(id)
 }
 
-func (s *Service) FindUserByLogin(login string) (u *entity.User, err error) {
-	users, err := s.rep.Find(login)
+func (s *Service) FindUsersBy(key string, value interface{}) ([]*entity.User, error) {
+	users, err := s.rep.Find(key, value)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(users) > 1 {
-		return nil, &entity.ErrExpectedOneEntity{}
-	} else if len(users) == 0 {
-		return nil, &entity.ErrNotFound{}
+	if len(users) == 0 {
+		return nil, entity.ErrNotFound
 	}
 
-	return users[0], nil
+	return users, nil
 }
 
 func (s *Service) GetUsersList() (u []*entity.User, err error) {

@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
-	"github.com/batroff/todo-back/internal/entity"
+	"github.com/batroff/todo-back/internal/models"
 	"log"
 )
 
@@ -16,9 +16,9 @@ func NewUserMySQL(db *sql.DB) *UserPostgres {
 	return &UserPostgres{db: db}
 }
 
-// Get : find in repository ONLY ONE user<entity.User> by entity.ID
-func (userPostgres *UserPostgres) Get(id entity.ID) (*entity.User, error) {
-	u := new(entity.User)
+// SelectByID : find in repository ONLY ONE user<entity.User> by entity.ID
+func (userPostgres *UserPostgres) SelectByID(id models.ID) (*models.User, error) {
+	u := new(models.User)
 	err := userPostgres.db.QueryRow("select * from users where id_user = $1", id).Scan(
 		&u.ID,
 		&u.Login,
@@ -28,7 +28,7 @@ func (userPostgres *UserPostgres) Get(id entity.ID) (*entity.User, error) {
 		&u.ImageID,
 	)
 	if err == sql.ErrNoRows {
-		return nil, entity.ErrNotFound
+		return nil, models.ErrNotFound
 	} else if err != nil {
 		return nil, err
 	}
@@ -36,15 +36,34 @@ func (userPostgres *UserPostgres) Get(id entity.ID) (*entity.User, error) {
 	return u, nil
 }
 
-// Find : find in repository users<entity.User> by query
-func (userPostgres *UserPostgres) Find(key string, value interface{}) (users []*entity.User, err error) {
+func (userPostgres *UserPostgres) SelectByEmail(email string) (*models.User, error) {
+	u := new(models.User)
+	err := userPostgres.db.QueryRow("select * from users where email = $1", email).Scan(
+		&u.ID,
+		&u.Login,
+		&u.Email,
+		&u.Password,
+		&u.CreatedAt,
+		&u.ImageID,
+	)
+	if err == sql.ErrNoRows {
+		return nil, models.ErrNotFound
+	} else if err != nil {
+		return nil, err
+	}
+
+	return u, nil
+}
+
+// SelectBy : find in repository users<entity.User> by query
+func (userPostgres *UserPostgres) SelectBy(key string, value interface{}) (users []*models.User, err error) {
 	rows, err := userPostgres.db.Query(fmt.Sprintf("select * from users where %s = $1", key), value)
 	if err != nil {
 		return nil, err
 	}
-	// TODO : ? Create general func for appending users through rows iteration
+	// TODO : ? Insert general func for appending users through rows iteration
 	for rows.Next() {
-		u := new(entity.User)
+		u := new(models.User)
 
 		err := rows.Scan(
 			&u.ID,
@@ -70,15 +89,15 @@ func (userPostgres *UserPostgres) Find(key string, value interface{}) (users []*
 	return users, nil
 }
 
-// List : return ALL users<entity.User> of repository
-func (userPostgres *UserPostgres) List() (users []*entity.User, err error) {
+// SelectAll : return ALL users<entity.User> of repository
+func (userPostgres *UserPostgres) SelectAll() (users []*models.User, err error) {
 	rows, err := userPostgres.db.Query("select * from users")
 	if err != nil {
 		return nil, err
 	}
 
 	for rows.Next() {
-		u := new(entity.User)
+		u := new(models.User)
 
 		err := rows.Scan(
 			&u.ID,
@@ -103,14 +122,14 @@ func (userPostgres *UserPostgres) List() (users []*entity.User, err error) {
 	return users, nil
 }
 
-// Create : create user<entity.User> in repository
-func (userPostgres *UserPostgres) Create(u *entity.User) (entity.ID, error) {
+// Insert : create user<entity.User> in repository
+func (userPostgres *UserPostgres) Insert(u *models.User) (models.ID, error) {
 	query, err := userPostgres.db.Prepare(`insert into users(id_user, login, email, password, created_at, id_image) values($1, $2, $3, $4, $5, $6)`)
 	if err != nil {
-		return entity.ID{}, err
+		return models.ID{}, err
 	}
 
-	if &u.ImageID == new(entity.ID) {
+	if &u.ImageID == new(models.ID) {
 		_, err = query.Exec(u.ID, u.Login, u.Email, u.Password, u.CreatedAt, nil)
 	} else {
 		_, err = query.Exec(u.ID, u.Login, u.Email, u.Password, u.CreatedAt, u.ImageID)
@@ -124,7 +143,7 @@ func (userPostgres *UserPostgres) Create(u *entity.User) (entity.ID, error) {
 }
 
 // Update : update user<entity.User> in repository
-func (userPostgres *UserPostgres) Update(u *entity.User) error {
+func (userPostgres *UserPostgres) Update(u *models.User) error {
 	query, err := userPostgres.db.Prepare("update users set login = $1, email = $2, password = $3, id_image = $4 where id_user = $5")
 	if err != nil {
 		return err
@@ -139,13 +158,13 @@ func (userPostgres *UserPostgres) Update(u *entity.User) error {
 }
 
 // Delete : delete user<entity.User> in repository
-func (userPostgres *UserPostgres) Delete(id entity.ID) error {
+func (userPostgres *UserPostgres) Delete(id models.ID) error {
 	res, err := userPostgres.db.Exec(`delete from users where id_user = $1`, id)
 	if err != nil {
 		return err
 	}
 	if rows, err := res.RowsAffected(); rows == 0 && err == nil {
-		return entity.ErrNotFound
+		return models.ErrNotFound
 	}
 
 	return nil

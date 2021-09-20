@@ -3,20 +3,26 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/batroff/todo-back/api/handler"
-	"github.com/batroff/todo-back/internal/infrastructure/repository"
-	"github.com/batroff/todo-back/internal/usecase/user"
+	"github.com/batroff/todo-back/cmd/api/handler"
+	"github.com/batroff/todo-back/cmd/api/middleware"
+	"github.com/batroff/todo-back/internal/user/repository"
+	"github.com/batroff/todo-back/internal/user/usecase"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"github.com/urfave/negroni"
-	_ "github.com/urfave/negroni" // Add
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
 func main() {
+	// TODO: put secret to .env.local
+	if err := os.Setenv("secret", "secret"); err != nil {
+		log.Fatalf("Error: err %s", err.Error())
+	}
+
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "postgres", "root", "localhost", 5432, "postgres")
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -30,12 +36,16 @@ func main() {
 	}()
 
 	userRepo := repository.NewUserMySQL(db)
-	userService := user.NewService(userRepo)
+	userService := usecase.NewService(userRepo)
 
 	r := mux.NewRouter()
-	n := negroni.New()
+	n := negroni.New(
+		negroni.HandlerFunc(middleware.Auth),
+	)
 
 	handler.MakeUserHandlers(r, *n, userService)
+	handler.MakeAuthHandlers(r, userService)
+
 	http.Handle("/", r)
 
 	srv := &http.Server{

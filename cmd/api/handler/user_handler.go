@@ -2,9 +2,9 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/batroff/todo-back/api/presenter"
-	"github.com/batroff/todo-back/internal/entity"
-	"github.com/batroff/todo-back/internal/usecase/user"
+	"github.com/batroff/todo-back/cmd/api/presenter"
+	"github.com/batroff/todo-back/internal/models"
+	"github.com/batroff/todo-back/internal/user"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
@@ -12,6 +12,7 @@ import (
 	"net/http"
 )
 
+// TODO : Deprecated - remove
 func writeResponseErr(rw http.ResponseWriter, statusCode int, err error) error {
 	var res struct {
 		Msg string `json:"msg"`
@@ -23,18 +24,18 @@ func writeResponseErr(rw http.ResponseWriter, statusCode int, err error) error {
 	return e
 }
 
-func getUserID(r *http.Request) (entity.ID, error) {
+func getUserID(r *http.Request) (models.ID, error) {
 	vars := mux.Vars(r)
 	return uuid.Parse(vars["id"])
 }
 
 func userCreateHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// Response headers
+		// ResponseWriter headers
 		rw.Header().Set("Content-Type", "application/json")
 
 		// Decoding request body
-		var u entity.User
+		var u models.User
 		err := json.NewDecoder(r.Body).Decode(&u)
 		if err != nil {
 			log.Printf("Error while decoding user. err %s\n", err.Error())
@@ -67,10 +68,10 @@ func userCreateHandler(useCase user.UseCase) http.Handler {
 
 func userListHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// Response headers
+		// ResponseWriter headers
 		rw.Header().Set("Content-Type", "application/json")
 
-		// Get users list
+		// SelectByID users list
 		users, err := useCase.GetUsersList()
 		if err != nil {
 			log.Printf("Error while getting users. err %s\n", err.Error())
@@ -90,7 +91,7 @@ func userListHandler(useCase user.UseCase) http.Handler {
 
 func userFindHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// Response headers
+		// ResponseWriter headers
 		rw.Header().Set("Content-Type", "application/json")
 
 		// Decode request
@@ -107,7 +108,7 @@ func userFindHandler(useCase user.UseCase) http.Handler {
 
 		// Finding user in repo
 		users, err := useCase.FindUsersBy(req.Key, req.Value)
-		if err == entity.ErrNotFound {
+		if err == models.ErrNotFound {
 			log.Printf("Error user not found")
 			_ = writeResponseErr(rw, http.StatusNotFound, err)
 			return
@@ -129,7 +130,7 @@ func userFindHandler(useCase user.UseCase) http.Handler {
 
 func userGetHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// Response headers
+		// ResponseWriter headers
 		rw.Header().Set("Content-Type", "application/json")
 
 		// Decode request
@@ -140,9 +141,9 @@ func userGetHandler(useCase user.UseCase) http.Handler {
 			return
 		}
 
-		// Get user from repo
+		// SelectByID user from repo
 		u, err := useCase.GetUser(id)
-		if err == entity.ErrNotFound {
+		if err == models.ErrNotFound {
 			log.Printf("Error user not found")
 			_ = writeResponseErr(rw, http.StatusNotFound, err)
 			return
@@ -164,10 +165,10 @@ func userGetHandler(useCase user.UseCase) http.Handler {
 
 func userDeleteHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// Response headers
+		// ResponseWriter headers
 		rw.Header().Set("Content-Type", "application/json")
 
-		// Get user id
+		// SelectByID user id
 		id, err := getUserID(r)
 		if err != nil {
 			log.Printf("Error while decoding request. err %s\n", err.Error())
@@ -176,7 +177,7 @@ func userDeleteHandler(useCase user.UseCase) http.Handler {
 		}
 
 		// Deleting user
-		if err := useCase.DeleteUser(id); err == entity.ErrNotFound {
+		if err := useCase.DeleteUser(id); err == models.ErrNotFound {
 			log.Printf("Error while deleting user. err %s\n", err.Error())
 			_ = writeResponseErr(rw, http.StatusNotFound, err)
 			return
@@ -202,10 +203,10 @@ func userDeleteHandler(useCase user.UseCase) http.Handler {
 
 func userUpdateHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// Response headers
+		// ResponseWriter headers
 		rw.Header().Set("Content-Type", "application/json")
 
-		// Get user id
+		// SelectByID user id
 		id, err := getUserID(r)
 		if err != nil {
 			log.Printf("Error while getting id. err %s\n", err.Error())
@@ -222,7 +223,7 @@ func userUpdateHandler(useCase user.UseCase) http.Handler {
 		}
 
 		// Update user
-		u := &entity.User{
+		u := &models.User{
 			ID:       id,
 			Login:    reqUser.Login,
 			Email:    reqUser.Email,

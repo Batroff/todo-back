@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS users
 (
 	id_user uuid NOT NULL,
 	login varchar(255) NOT NULL,
-	email varchar(255) NOT NULL,
+	email varchar(255) NOT NULL UNIQUE,
 	password varchar(255) NOT NULL,
 	created_at timestamp NOT NULL,
 	id_image uuid DEFAULT NULL,

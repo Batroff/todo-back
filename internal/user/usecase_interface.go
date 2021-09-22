@@ -4,7 +4,6 @@ import (
 	"github.com/batroff/todo-back/internal/models"
 )
 
-// UseCase TODO : Add FindUserByEmail; make FindUsersBy private
 type UseCase interface {
 	GetUser(id models.ID) (*models.User, error)
 	FindUserByEmail(email string) (*models.User, error)

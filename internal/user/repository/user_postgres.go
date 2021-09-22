@@ -55,13 +55,7 @@ func (userPostgres *UserPostgres) SelectByEmail(email string) (*models.User, err
 	return u, nil
 }
 
-// SelectBy : find in repository users<entity.User> by query
-func (userPostgres *UserPostgres) SelectBy(key string, value interface{}) (users []*models.User, err error) {
-	rows, err := userPostgres.db.Query(fmt.Sprintf("select * from users where %s = $1", key), value)
-	if err != nil {
-		return nil, err
-	}
-	// TODO : ? Insert general func for appending users through rows iteration
+func scanUsersRows(rows *sql.Rows) (users []*models.User, err error) {
 	for rows.Next() {
 		u := new(models.User)
 
@@ -73,7 +67,9 @@ func (userPostgres *UserPostgres) SelectBy(key string, value interface{}) (users
 			&u.CreatedAt,
 			&u.ImageID,
 		)
-		if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, models.ErrNotFound
+		} else if err != nil {
 			return nil, err
 		}
 
@@ -81,10 +77,24 @@ func (userPostgres *UserPostgres) SelectBy(key string, value interface{}) (users
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			// TODO: logger in UserPostgres struct
 			log.Printf("Error during closing rows in UserPostgres")
 		}
 	}()
+
+	return users, nil
+}
+
+// SelectBy : find in repository users<entity.User> by query
+func (userPostgres *UserPostgres) SelectBy(key string, value interface{}) (users []*models.User, err error) {
+	rows, err := userPostgres.db.Query(fmt.Sprintf("select * from users where %s = $1", key), value)
+	if err != nil {
+		return nil, err
+	}
+
+	users, err = scanUsersRows(rows)
+	if err != nil {
+		return nil, err
+	}
 
 	return users, nil
 }
@@ -96,28 +106,10 @@ func (userPostgres *UserPostgres) SelectAll() (users []*models.User, err error) 
 		return nil, err
 	}
 
-	for rows.Next() {
-		u := new(models.User)
-
-		err := rows.Scan(
-			&u.ID,
-			&u.Login,
-			&u.Email,
-			&u.Password,
-			&u.CreatedAt,
-			&u.ImageID,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		users = append(users, u)
+	users, err = scanUsersRows(rows)
+	if err != nil {
+		return nil, err
 	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Printf("Error during closing rows in UserPostgres")
-		}
-	}()
 
 	return users, nil
 }
@@ -149,9 +141,12 @@ func (userPostgres *UserPostgres) Update(u *models.User) error {
 		return err
 	}
 
-	_, err = query.Exec(u.Login, u.Email, u.Password, u.ImageID, u.ID)
+	res, err := query.Exec(u.Login, u.Email, u.Password, u.ImageID, u.ID)
 	if err != nil {
 		return err
+	}
+	if rows, err := res.RowsAffected(); rows == 0 && err == nil {
+		return models.ErrNotFound
 	}
 
 	return nil

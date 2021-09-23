@@ -2,26 +2,21 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/batroff/todo-back/cmd/api/presenter"
 	"github.com/batroff/todo-back/internal/models"
 	"github.com/batroff/todo-back/internal/user"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
-	"log"
 	"net/http"
 )
 
-// TODO : Deprecated - remove
-func writeResponseErr(rw http.ResponseWriter, statusCode int, err error) error {
-	var res struct {
-		Msg string `json:"msg"`
-	}
-	res.Msg = err.Error()
+const entityPrefix = "/users"
+const userIdRegex = "{id:\\w{8}-(?:\\w{4}-){3}\\w{12}}"
 
-	rw.WriteHeader(statusCode)
-	e := json.NewEncoder(rw).Encode(res)
-	return e
+func makeRegexURI(prefix, regex string) string {
+	return fmt.Sprintf("%s/%s", prefix, regex)
 }
 
 func getUserID(r *http.Request) (models.ID, error) {
@@ -31,242 +26,204 @@ func getUserID(r *http.Request) (models.ID, error) {
 
 func userCreateHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// ResponseWriter headers
-		rw.Header().Set("Content-Type", "application/json")
+		responseWriter := presenter.NewResponseWriter(rw)
 
 		// Decoding request body
 		var u models.User
-		err := json.NewDecoder(r.Body).Decode(&u)
-		if err != nil {
-			log.Printf("Error while decoding user. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusBadRequest, err)
+		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
+			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
 			return
 		}
 
 		// Creating user
 		id, err := useCase.CreateUser(u.Login, u.Email, u.Password)
 		if err != nil {
-			log.Printf("Error while creating user. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
+			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
 		u.ID = id
-		log.Printf("Created user: id = %s\n", id.String())
 
 		// Encode response
-		// FIXME : CreatedAt, ImageID shouldn't encode? Add GetUser(id)?
+		rw.Header().Set("Location", makeRegexURI(entityPrefix, id.String()))
 		rw.WriteHeader(http.StatusCreated)
-		err = json.NewEncoder(rw).Encode(&u)
-
-		if err != nil {
-			log.Printf("Error while encoding response. err %s", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
-			return
-		}
 	})
 }
 
 func userListHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// ResponseWriter headers
-		rw.Header().Set("Content-Type", "application/json")
+		responseWriter := presenter.NewResponseWriter(rw)
+
+		headers := map[string]string{
+			"Content-Type":  "application/json; charset=utf-8",
+			"Cache-Control": "no-store, no-cache, must-revalidate",
+			"Pragma":        "no-cache",
+		}
+		responseWriter.SetHeaders(headers)
+
+		if err := r.ParseForm(); err != nil {
+			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
+		}
+
+		if email, ok := r.Form["email"]; ok || len(email) == 1 {
+			u, err := useCase.FindUserByEmail(email[0])
+			if err == models.ErrNotFound {
+				responseWriter.Write(http.StatusOK, make([]string, 0))
+				return
+			} else if err != nil {
+				responseWriter.Write(http.StatusInternalServerError, err)
+				return
+			}
+
+			responseWriter.Write(http.StatusOK, u)
+			return
+		}
 
 		// SelectByID users list
 		users, err := useCase.GetUsersList()
 		if err != nil {
-			log.Printf("Error while getting users. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
+			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
 
 		// Encode response
-		err = json.NewEncoder(rw).Encode(&users)
-		if err != nil {
-			log.Printf("Error while encoding user. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
+		if users == nil {
+			responseWriter.Write(http.StatusOK, make([]string, 0))
 			return
 		}
+		responseWriter.Write(http.StatusOK, users)
 	})
 }
 
-func userFindHandler(useCase user.UseCase) http.Handler {
+func userGetByIDHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// ResponseWriter headers
-		rw.Header().Set("Content-Type", "application/json")
+		responseWriter := presenter.NewResponseWriter(rw)
 
-		// Decode request
-		var req struct {
-			Key   string      `json:"key"`
-			Value interface{} `json:"value"`
+		headers := map[string]string{
+			"Content-Type":  "application/json; charset=utf-8",
+			"Cache-Control": "no-store, no-cache, must-revalidate",
+			"Pragma":        "no-cache",
 		}
-
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			log.Printf("Error while decoding request. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusBadRequest, err)
-			return
-		}
-
-		// Finding user in repo
-		users, err := useCase.FindUsersBy(req.Key, req.Value)
-		if err == models.ErrNotFound {
-			log.Printf("Error user not found")
-			_ = writeResponseErr(rw, http.StatusNotFound, err)
-			return
-		} else if err != nil {
-			log.Printf("Error while finding user. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
-			return
-		}
-
-		// Encode response
-		err = json.NewEncoder(rw).Encode(&users)
-		if err != nil {
-			log.Printf("Error while encoding response. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
-			return
-		}
-	})
-}
-
-func userGetHandler(useCase user.UseCase) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// ResponseWriter headers
-		rw.Header().Set("Content-Type", "application/json")
+		responseWriter.SetHeaders(headers)
 
 		// Decode request
 		id, err := getUserID(r)
 		if err != nil {
-			log.Printf("Error while decoding request. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
+			responseWriter.Write(http.StatusBadRequest, err)
 			return
 		}
 
 		// SelectByID user from repo
 		u, err := useCase.GetUser(id)
 		if err == models.ErrNotFound {
-			log.Printf("Error user not found")
-			_ = writeResponseErr(rw, http.StatusNotFound, err)
+			responseWriter.Write(http.StatusNotFound, err)
 			return
 		} else if err != nil {
-			log.Printf("Error while getting user. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
+			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
 
-		// Encode & write response
-		err = json.NewEncoder(rw).Encode(&u)
-		if err != nil {
-			log.Printf("Error while encoding response. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
-			return
-		}
+		responseWriter.Write(http.StatusOK, u)
 	})
 }
 
 func userDeleteHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// ResponseWriter headers
-		rw.Header().Set("Content-Type", "application/json")
+		responseWriter := presenter.NewResponseWriter(rw)
 
 		// SelectByID user id
 		id, err := getUserID(r)
 		if err != nil {
-			log.Printf("Error while decoding request. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
+			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
 
 		// Deleting user
-		if err := useCase.DeleteUser(id); err == models.ErrNotFound {
-			log.Printf("Error while deleting user. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusNotFound, err)
-			return
-		} else if err != nil {
-			log.Printf("Error while deleting user. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
+		if err := useCase.DeleteUser(id); err != nil {
+			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
 
-		// Encoding response
-		var resp struct {
-			ID string `json:"id"`
-		}
-		resp.ID = id.String()
-
-		if err := json.NewEncoder(rw).Encode(resp); err != nil {
-			log.Printf("Error while encoding response. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
-			return
-		}
+		rw.WriteHeader(http.StatusNoContent)
 	})
 }
 
 func userUpdateHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// ResponseWriter headers
-		rw.Header().Set("Content-Type", "application/json")
+		responseWriter := presenter.NewResponseWriter(rw)
+
+		headers := map[string]string{
+			"Content-Type":  "application/json; charset=utf-8",
+			"Cache-Control": "no-store, no-cache, must-revalidate",
+			"Pragma":        "no-cache",
+		}
+		responseWriter.SetHeaders(headers)
 
 		// SelectByID user id
 		id, err := getUserID(r)
 		if err != nil {
-			log.Printf("Error while getting id. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
+			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
 
 		// Decode request
-		var reqUser presenter.User
-		if err := json.NewDecoder(r.Body).Decode(&reqUser); err != nil {
-			log.Printf("Error while decoding request. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusBadRequest, err)
+		var u models.User
+		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
+			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
 			return
 		}
+		u.ID = id
 
+		// TODO : Update only initialized fields
 		// Update user
-		u := &models.User{
-			ID:       id,
-			Login:    reqUser.Login,
-			Email:    reqUser.Email,
-			Password: reqUser.Password,
-			ImageID:  *reqUser.ImageID,
-		}
-		if err := useCase.UpdateUser(u); err != nil {
-			log.Printf("Error while updating user. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
+		if err := useCase.UpdateUser(&u); err != nil {
+			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
 
 		// Encode response
-		if err := json.NewEncoder(rw).Encode(reqUser); err != nil {
-			log.Printf("Error while encoding response. err %s\n", err.Error())
-			_ = writeResponseErr(rw, http.StatusInternalServerError, err)
+		if err := json.NewEncoder(rw).Encode(u); err != nil {
+			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
 	})
 }
 
 func MakeUserHandlers(r *mux.Router, n negroni.Negroni, useCase user.UseCase) {
-	r.Handle("/users", n.With(
+	// TODO : add HEAD, OPTIONS methods for /users/:id endpoint
+
+	// Create user
+	r.Handle(entityPrefix, n.With(
 		negroni.Wrap(userCreateHandler(useCase)),
-	)).Methods("POST").Headers("Content-Type", "application/json")
+	)).Methods("POST").
+		Headers("Content-Type", "application/json").
+		Name("UserCreateHandler")
 
-	r.Handle("/users", n.With(
+	// Get user list (opt: with query)
+	r.Handle(entityPrefix, n.With(
 		negroni.Wrap(userListHandler(useCase)),
+	)).Methods("GET").
+		Queries("email", "{email}").
+		Name("UserQueryListHandler")
+
+	r.Handle(entityPrefix, n.With(
+		negroni.Wrap(userListHandler(useCase)),
+	)).Methods("GET").
+		Name("UserListHandler")
+	// End user list
+
+	// Get user by id
+	r.Handle(makeRegexURI(entityPrefix, userIdRegex), n.With(
+		negroni.Wrap(userGetByIDHandler(useCase)),
 	)).Methods("GET")
 
-	r.Handle("/users/find", n.With(
-		negroni.Wrap(userFindHandler(useCase)),
-	)).Methods("POST").Headers("Content-Type", "application/json")
-
-	r.Handle("/users/{id}", n.With(
-		negroni.Wrap(userGetHandler(useCase)),
-	)).Methods("GET")
-
-	r.Handle("/users/{id}", n.With(
+	// Delete user by id
+	r.Handle(makeRegexURI(entityPrefix, userIdRegex), n.With(
 		negroni.Wrap(userDeleteHandler(useCase)),
 	)).Methods("DELETE")
 
-	r.Handle("/users/{id}", n.With(
+	// Update user by id
+	r.Handle(makeRegexURI(entityPrefix, userIdRegex), n.With(
 		negroni.Wrap(userUpdateHandler(useCase)),
-	)).Methods("PUT").Headers("Content-Type", "application/json")
+	)).Methods("PATCH").Headers("Content-Type", "application/json")
 }

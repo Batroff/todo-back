@@ -154,12 +154,9 @@ func (userPostgres *UserPostgres) Update(u *models.User) error {
 
 // Delete : delete user<entity.User> in repository
 func (userPostgres *UserPostgres) Delete(id models.ID) error {
-	res, err := userPostgres.db.Exec(`delete from users where id_user = $1`, id)
+	_, err := userPostgres.db.Exec(`delete from users where id_user = $1`, id)
 	if err != nil {
 		return err
-	}
-	if rows, err := res.RowsAffected(); rows == 0 && err == nil {
-		return models.ErrNotFound
 	}
 
 	return nil

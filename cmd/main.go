@@ -43,8 +43,10 @@ func main() {
 		negroni.HandlerFunc(middleware.Auth),
 	)
 
-	handler.MakeUserHandlers(r, *n, userService)
-	handler.MakeAuthHandlers(r, userService)
+	apiV1 := r.PathPrefix("/api/v1/").Subrouter()
+
+	handler.MakeUserHandlers(apiV1, *n, userService)
+	handler.MakeAuthHandlers(apiV1, userService)
 
 	http.Handle("/", r)
 

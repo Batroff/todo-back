@@ -5,6 +5,7 @@ import (
 	"github.com/batroff/todo-back/internal/user/repository"
 	"github.com/bxcodec/faker/v3"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/bcrypt"
 	"testing"
 	"time"
 )
@@ -51,14 +52,16 @@ func TestService_GetUser(t *testing.T) {
 		u, err := userService.GetUser(id)
 		assert.NoError(t, err, err)
 
+		expectedHash, err := bcrypt.GenerateFromPassword([]byte(testCase.password), bcrypt.DefaultCost)
 		assert.Conditionf(t, func() bool {
-			if u.Login != testCase.login || u.Email != testCase.email || u.Password != testCase.password {
+			pwdErr := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(testCase.password))
+			if u.Login != testCase.login || u.Email != testCase.email || pwdErr != nil {
 				return false
 			}
 
 			return true
 		}, "Expected <login, email, password>=<%q, %q, %q>\nGot <%q, %q, %q>",
-			testCase.login, testCase.email, testCase.password, u.Login, u.Email, u.Password)
+			testCase.login, testCase.email, string(expectedHash), u.Login, u.Email, u.Password)
 	}
 }
 
@@ -75,14 +78,17 @@ func TestService_CreateUser(t *testing.T) {
 		u, _ := userService.GetUser(id)
 		assert.NotEqualValues(t, time.Time{}, u.CreatedAt, "Expected not zero time")
 		assert.Falsef(t, models.IsIDValid(u.ImageID), "Expected nil uuid, got %s", u.ImageID)
+
+		expectedHash, _ := bcrypt.GenerateFromPassword([]byte(testCase.password), bcrypt.DefaultCost)
 		assert.Conditionf(t, func() bool {
-			if u.Login != testCase.login || u.Email != testCase.email || u.Password != testCase.password {
+			pwdErr := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(testCase.password))
+			if u.Login != testCase.login || u.Email != testCase.email || pwdErr != nil {
 				return false
 			}
 
 			return true
 		}, "Expected <login, email, password>=<%q, %q, %q>\nGot <%q, %q, %q>",
-			testCase.login, testCase.email, testCase.password, u.Login, u.Email, u.Password)
+			testCase.login, testCase.email, expectedHash, u.Login, u.Email, u.Password)
 	}
 }
 

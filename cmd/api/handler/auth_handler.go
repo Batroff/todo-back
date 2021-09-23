@@ -6,6 +6,7 @@ import (
 	"github.com/batroff/todo-back/cmd/api/presenter"
 	"github.com/batroff/todo-back/internal/user"
 	"github.com/gorilla/mux"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"time"
@@ -34,8 +35,9 @@ func loginAuthHandler(useCase user.UseCase) http.Handler {
 		}
 
 		// Compare userdata
-		// TODO : Verify password by hash
-		if authReq.Email != u.Email || authReq.Password != u.Password {
+		err = bcrypt.CompareHashAndPassword([]byte(authReq.Password), []byte(u.Password))
+
+		if authReq.Email != u.Email || err != nil {
 			authRes.Msg = err.Error()
 			log.Println(responseWriter.Write(http.StatusUnauthorized, authRes))
 			return

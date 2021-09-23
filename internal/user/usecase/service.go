@@ -3,6 +3,7 @@ package usecase
 import (
 	"github.com/batroff/todo-back/internal/models"
 	"github.com/batroff/todo-back/internal/user"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
@@ -39,7 +40,12 @@ func (s *Service) GetUsersList() (u []*models.User, err error) {
 }
 
 func (s *Service) CreateUser(login, email, password string) (id models.ID, err error) {
-	u := models.NewUser(login, email, password)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return models.ID{}, err
+	}
+
+	u := models.NewUser(login, email, string(hash))
 	return s.rep.Insert(u)
 }
 

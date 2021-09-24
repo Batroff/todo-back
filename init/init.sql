@@ -156,10 +156,6 @@ ALTER TABLE task
 	ON DELETE RESTRICT
 ;
 
-/* Init default image */
-INSERT INTO image(id_image, width, height, rel_path)
-VALUES ('00000000-0000-0000-0000-000000000000', 0.0, 0.0, '');
-
 
 /* Comments */
 

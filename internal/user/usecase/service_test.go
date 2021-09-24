@@ -77,7 +77,7 @@ func TestService_CreateUser(t *testing.T) {
 
 		u, _ := userService.GetUser(id)
 		assert.NotEqualValues(t, time.Time{}, u.CreatedAt, "Expected not zero time")
-		assert.Falsef(t, models.IsIDValid(u.ImageID), "Expected nil uuid, got %s", u.ImageID)
+		assert.Nilf(t, u.ImageID, "Expected nil uuid, got %s", u.ImageID)
 
 		expectedHash, _ := bcrypt.GenerateFromPassword([]byte(testCase.password), bcrypt.DefaultCost)
 		assert.Conditionf(t, func() bool {

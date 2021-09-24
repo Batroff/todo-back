@@ -121,11 +121,7 @@ func (userPostgres *UserPostgres) Insert(u *models.User) (models.ID, error) {
 		return models.ID{}, err
 	}
 
-	if &u.ImageID == new(models.ID) {
-		_, err = query.Exec(u.ID, u.Login, u.Email, u.Password, u.CreatedAt, nil)
-	} else {
-		_, err = query.Exec(u.ID, u.Login, u.Email, u.Password, u.CreatedAt, u.ImageID)
-	}
+	_, err = query.Exec(u.ID, u.Login, u.Email, u.Password, u.CreatedAt, u.ImageID)
 
 	if err != nil {
 		return u.ID, err

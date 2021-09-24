@@ -5,8 +5,13 @@ import (
 	"fmt"
 	"github.com/batroff/todo-back/cmd/api/handler"
 	"github.com/batroff/todo-back/cmd/api/middleware"
-	"github.com/batroff/todo-back/internal/user/repository"
-	"github.com/batroff/todo-back/internal/user/usecase"
+
+	taskRep "github.com/batroff/todo-back/internal/task/repository"
+	taskUseCase "github.com/batroff/todo-back/internal/task/usecase"
+
+	userRep "github.com/batroff/todo-back/internal/user/repository"
+	userUseCase "github.com/batroff/todo-back/internal/user/usecase"
+
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -35,8 +40,10 @@ func main() {
 		}
 	}()
 
-	userRepo := repository.NewUserMySQL(db)
-	userService := usecase.NewService(userRepo)
+	userRepo := userRep.NewUserMySQL(db)
+	userService := userUseCase.NewService(userRepo)
+	taskRepo := taskRep.NewTaskPostgres(db)
+	taskService := taskUseCase.NewService(taskRepo)
 
 	r := mux.NewRouter()
 	n := negroni.New(
@@ -45,8 +52,9 @@ func main() {
 
 	apiV1 := r.PathPrefix("/api/v1/").Subrouter()
 
-	handler.MakeUserHandlers(apiV1, *n, userService)
 	handler.MakeAuthHandlers(apiV1, userService)
+	handler.MakeUserHandlers(apiV1, *n, userService)
+	handler.MakeTaskHandlers(apiV1, *n, taskService)
 
 	http.Handle("/", r)
 

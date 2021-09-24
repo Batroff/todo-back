@@ -1,0 +1,19 @@
+package models
+
+type Task struct {
+	ID       ID     `json:"id,omitempty"`
+	Title    string `json:"title,omitempty"`
+	Priority *uint  `json:"priority,omitempty"`
+	UserID   ID     `json:"user_id,omitempty"`
+	TeamID   *ID    `json:"team_id,omitempty"`
+}
+
+func NewTask(title string, priority *uint, userID ID, teamID *ID) *Task {
+	return &Task{
+		ID:       NewID(),
+		Title:    title,
+		Priority: priority,
+		UserID:   userID,
+		TeamID:   teamID,
+	}
+}

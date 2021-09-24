@@ -2,28 +2,17 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/batroff/todo-back/cmd/api/presenter"
 	"github.com/batroff/todo-back/internal/models"
 	"github.com/batroff/todo-back/internal/user"
-	"github.com/google/uuid"
+	"github.com/batroff/todo-back/pkg/handler"
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
 	"net/http"
 	"reflect"
 )
 
-const entityPrefix = "/users"
-const userIdRegex = "{id:\\w{8}-(?:\\w{4}-){3}\\w{12}}"
-
-func makeRegexURI(prefix, regex string) string {
-	return fmt.Sprintf("%s/%s", prefix, regex)
-}
-
-func getUserID(r *http.Request) (models.ID, error) {
-	vars := mux.Vars(r)
-	return uuid.Parse(vars["id"])
-}
+const usersRoute = "/users"
 
 func userCreateHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
@@ -45,7 +34,7 @@ func userCreateHandler(useCase user.UseCase) http.Handler {
 		u.ID = id
 
 		// Encode response
-		rw.Header().Set("Location", makeRegexURI(entityPrefix, id.String()))
+		rw.Header().Set("Location", handler.MakeRegexURI(usersRoute, id.String()))
 		rw.WriteHeader(http.StatusCreated)
 	})
 }
@@ -107,7 +96,7 @@ func userGetByIDHandler(useCase user.UseCase) http.Handler {
 		responseWriter.SetHeaders(headers)
 
 		// Decode request
-		id, err := getUserID(r)
+		id, err := handler.GetIDFromURI(r)
 		if err != nil {
 			responseWriter.Write(http.StatusBadRequest, err)
 			return
@@ -132,7 +121,7 @@ func userDeleteHandler(useCase user.UseCase) http.Handler {
 		responseWriter := presenter.NewResponseWriter(rw)
 
 		// SelectByID user id
-		id, err := getUserID(r)
+		id, err := handler.GetIDFromURI(r)
 		if err != nil {
 			responseWriter.Write(http.StatusInternalServerError, err)
 			return
@@ -161,7 +150,7 @@ func userPatchHandler(useCase user.UseCase) http.Handler {
 		responseWriter.SetHeaders(headers)
 
 		// SelectByID user id
-		id, err := getUserID(r)
+		id, err := handler.GetIDFromURI(r)
 		if err != nil {
 			responseWriter.Write(http.StatusInternalServerError, err)
 			return
@@ -189,10 +178,14 @@ func userPatchHandler(useCase user.UseCase) http.Handler {
 		for i := 0; i < t.NumField(); i++ {
 			f := t.Field(i)
 
-			if !refReq.Field(i).IsZero() {
-				v := refReq.Field(i).Elem()
+			var v reflect.Value
+			if refReq.Field(i).Kind() == reflect.Ptr && !refReq.Field(i).IsZero() {
+				v = refReq.Field(i).Elem()
 				refUpd.FieldByName(f.Name).Set(v)
-			}
+			} else {
+				v = refReq.Field(i)
+			} // TODO : Fix image UUID setting
+
 		}
 
 		// Update user
@@ -213,39 +206,39 @@ func MakeUserHandlers(r *mux.Router, n negroni.Negroni, useCase user.UseCase) {
 	// TODO : add HEAD, OPTIONS methods for /users/:id endpoint
 
 	// Create user
-	r.Handle(entityPrefix, n.With(
+	r.Handle(usersRoute, n.With(
 		negroni.Wrap(userCreateHandler(useCase)),
 	)).Methods("POST").
 		Headers("Content-Type", "application/json").
 		Name("UserCreateHandler")
 
 	// Get user list (opt: with query)
-	r.Handle(entityPrefix, n.With(
+	r.Handle(usersRoute, n.With(
 		negroni.Wrap(usersListHandler(useCase)),
 	)).Methods("GET").
 		Queries("email", "{email}").
 		Name("UserQueryListHandler")
 
-	r.Handle(entityPrefix, n.With(
+	r.Handle(usersRoute, n.With(
 		negroni.Wrap(usersListHandler(useCase)),
 	)).Methods("GET").
 		Name("UserListHandler")
 	// End user list
 
 	// Get user by id
-	r.Handle(makeRegexURI(entityPrefix, userIdRegex), n.With(
+	r.Handle(handler.MakeRegexURI(usersRoute, handler.UUIDRegex), n.With(
 		negroni.Wrap(userGetByIDHandler(useCase)),
 	)).Methods("GET").
 		Name("UserGetByIDHandler")
 
 	// Delete user by id
-	r.Handle(makeRegexURI(entityPrefix, userIdRegex), n.With(
+	r.Handle(handler.MakeRegexURI(usersRoute, handler.UUIDRegex), n.With(
 		negroni.Wrap(userDeleteHandler(useCase)),
 	)).Methods("DELETE").
 		Name("UserDeleteHandler")
 
 	// Update user by id
-	r.Handle(makeRegexURI(entityPrefix, userIdRegex), n.With(
+	r.Handle(handler.MakeRegexURI(usersRoute, handler.UUIDRegex), n.With(
 		negroni.Wrap(userPatchHandler(useCase)),
 	)).Methods("PATCH").
 		Headers("Content-Type", "application/json").

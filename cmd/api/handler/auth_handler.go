@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// TODO : fix token expiration date
 func loginAuthHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// Decode request
@@ -34,7 +35,7 @@ func loginAuthHandler(useCase user.UseCase) http.Handler {
 		}
 
 		// Compare userdata
-		err = bcrypt.CompareHashAndPassword([]byte(authReq.Password), []byte(u.Password))
+		err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(authReq.Password))
 
 		if authReq.Email != u.Email || err != nil {
 			authRes.Msg = err.Error()

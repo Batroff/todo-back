@@ -4,9 +4,9 @@ import (
 	"github.com/batroff/todo-back/internal/models"
 )
 
-type User struct {
-	Login    string     `json:"login"`
-	Email    string     `json:"email"`
-	Password string     `json:"password"`
+type RequestUser struct {
+	Login    *string    `json:"login,omitempty"`
+	Email    *string    `json:"email,omitempty"`
+	Password *string    `json:"password,omitempty"`
 	ImageID  *models.ID `json:"image_id,omitempty"`
 }

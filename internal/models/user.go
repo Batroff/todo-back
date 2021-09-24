@@ -5,10 +5,10 @@ import (
 )
 
 type User struct {
-	ID        ID        `json:"id"`
-	Login     string    `json:"login"`
-	Email     string    `json:"email"`
-	Password  string    `json:"password"`
+	ID        ID        `json:"id,omitempty"`
+	Login     string    `json:"login,omitempty"`
+	Email     string    `json:"email,omitempty"`
+	Password  string    `json:"password,omitempty"`
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	ImageID   ID        `json:"image_id,omitempty"`
 }

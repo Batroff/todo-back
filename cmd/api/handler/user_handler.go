@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
 	"net/http"
+	"reflect"
 )
 
 const entityPrefix = "/users"
@@ -49,7 +50,7 @@ func userCreateHandler(useCase user.UseCase) http.Handler {
 	})
 }
 
-func userListHandler(useCase user.UseCase) http.Handler {
+func usersListHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		responseWriter := presenter.NewResponseWriter(rw)
 
@@ -147,7 +148,7 @@ func userDeleteHandler(useCase user.UseCase) http.Handler {
 	})
 }
 
-func userUpdateHandler(useCase user.UseCase) http.Handler {
+func userPatchHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// ResponseWriter headers
 		responseWriter := presenter.NewResponseWriter(rw)
@@ -166,23 +167,42 @@ func userUpdateHandler(useCase user.UseCase) http.Handler {
 			return
 		}
 
+		// Try to find user
+		u, err := useCase.GetUser(id)
+		if err != nil {
+			responseWriter.Write(http.StatusNotFound, err)
+			return
+		}
+
 		// Decode request
-		var u models.User
-		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
+		var requestUser presenter.RequestUser
+		if err := json.NewDecoder(r.Body).Decode(&requestUser); err != nil {
 			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
 			return
 		}
-		u.ID = id
 
-		// TODO : Update only initialized fields
+		// Update only requested fields
+		refReq := reflect.ValueOf(requestUser)
+		refUpd := reflect.ValueOf(u).Elem()
+
+		t := refReq.Type()
+		for i := 0; i < t.NumField(); i++ {
+			f := t.Field(i)
+
+			if !refReq.Field(i).IsZero() {
+				v := refReq.Field(i).Elem()
+				refUpd.FieldByName(f.Name).Set(v)
+			}
+		}
+
 		// Update user
-		if err := useCase.UpdateUser(&u); err != nil {
+		if err := useCase.UpdateUser(u); err != nil {
 			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
 
 		// Encode response
-		if err := json.NewEncoder(rw).Encode(u); err != nil {
+		if err := json.NewEncoder(rw).Encode(&requestUser); err != nil {
 			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
@@ -201,13 +221,13 @@ func MakeUserHandlers(r *mux.Router, n negroni.Negroni, useCase user.UseCase) {
 
 	// Get user list (opt: with query)
 	r.Handle(entityPrefix, n.With(
-		negroni.Wrap(userListHandler(useCase)),
+		negroni.Wrap(usersListHandler(useCase)),
 	)).Methods("GET").
 		Queries("email", "{email}").
 		Name("UserQueryListHandler")
 
 	r.Handle(entityPrefix, n.With(
-		negroni.Wrap(userListHandler(useCase)),
+		negroni.Wrap(usersListHandler(useCase)),
 	)).Methods("GET").
 		Name("UserListHandler")
 	// End user list
@@ -215,15 +235,19 @@ func MakeUserHandlers(r *mux.Router, n negroni.Negroni, useCase user.UseCase) {
 	// Get user by id
 	r.Handle(makeRegexURI(entityPrefix, userIdRegex), n.With(
 		negroni.Wrap(userGetByIDHandler(useCase)),
-	)).Methods("GET")
+	)).Methods("GET").
+		Name("UserGetByIDHandler")
 
 	// Delete user by id
 	r.Handle(makeRegexURI(entityPrefix, userIdRegex), n.With(
 		negroni.Wrap(userDeleteHandler(useCase)),
-	)).Methods("DELETE")
+	)).Methods("DELETE").
+		Name("UserDeleteHandler")
 
 	// Update user by id
 	r.Handle(makeRegexURI(entityPrefix, userIdRegex), n.With(
-		negroni.Wrap(userUpdateHandler(useCase)),
-	)).Methods("PATCH").Headers("Content-Type", "application/json")
+		negroni.Wrap(userPatchHandler(useCase)),
+	)).Methods("PATCH").
+		Headers("Content-Type", "application/json").
+		Name("UserPatchHandler")
 }

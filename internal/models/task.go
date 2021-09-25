@@ -8,6 +8,7 @@ type Task struct {
 	TeamID   *ID    `json:"team_id,omitempty"`
 }
 
+// NewTask returns new *Task, generated from params
 func NewTask(title string, priority *uint, userID ID, teamID *ID) *Task {
 	return &Task{
 		ID:       NewID(),

@@ -2,58 +2,56 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/batroff/todo-back/cmd/api/middleware"
 	"github.com/batroff/todo-back/cmd/api/presenter"
 	"github.com/batroff/todo-back/internal/user"
+	"github.com/batroff/todo-back/pkg/token"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
-	"time"
 )
 
-// TODO : fix token expiration date
 func loginAuthHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// Decode request
-		var authReq presenter.AuthRequest
-		var authRes presenter.AuthResponse
 		responseWriter := presenter.NewResponseWriter(rw)
 
+		// Decode request
+		var authReq presenter.AuthRequest
 		if err := json.NewDecoder(r.Body).Decode(&authReq); err != nil {
-			authRes.Msg = err.Error()
-			responseWriter.Write(http.StatusBadRequest, authRes)
+			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
 			return
 		}
-		authRes.Request = authReq
 
 		// Find user in repo
 		u, err := useCase.FindUserByEmail(authReq.Email)
 		if err != nil {
-			authRes.Msg = err.Error()
-			responseWriter.Write(http.StatusNotFound, authRes)
+			responseWriter.Write(http.StatusNotFound, err)
 			return
 		}
 
 		// Compare userdata
-		err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(authReq.Password))
-
-		if authReq.Email != u.Email || err != nil {
-			authRes.Msg = err.Error()
-			responseWriter.Write(http.StatusUnauthorized, authRes)
+		passwordErr := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(authReq.Password))
+		if authReq.Email != u.Email || passwordErr != nil {
+			responseWriter.Write(http.StatusUnauthorized, presenter.ErrUnauthorized)
 			return
 		}
 
 		// Create token
-		if authRes.Token, err = middleware.CreateToken(u.ID); err != nil {
-			authRes.Msg = err.Error()
-			responseWriter.Write(http.StatusInternalServerError, authRes)
+		t, err := token.CreateToken(u.ID)
+		if err != nil {
+			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
 
 		// Write response & cookie session_id
-		cookie := http.Cookie{Name: "session_id", Path: "/", Value: authRes.Token, Secure: true, HttpOnly: true, Expires: time.Now().Add(time.Hour * 24)}
-		http.SetCookie(rw, &cookie)
-		responseWriter.Write(http.StatusOK, authRes)
+		cookie := http.Cookie{
+			Name:     "session_id",
+			Path:     "/api/",
+			Value:    t,
+			Secure:   true,
+			HttpOnly: true,
+		}
+		responseWriter.SetCookie(&cookie)
+		rw.WriteHeader(http.StatusOK)
 	})
 }
 

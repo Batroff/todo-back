@@ -15,6 +15,7 @@ type User struct {
 
 type Users []User
 
+// NewUser returns new *User, generated from params
 func NewUser(login, email, password string) *User {
 	return &User{
 		ID:        NewID(),

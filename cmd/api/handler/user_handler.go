@@ -178,14 +178,20 @@ func userPatchHandler(useCase user.UseCase) http.Handler {
 		for i := 0; i < t.NumField(); i++ {
 			f := t.Field(i)
 
-			var v reflect.Value
-			if refReq.Field(i).Kind() == reflect.Ptr && !refReq.Field(i).IsZero() {
-				v = refReq.Field(i).Elem()
-				refUpd.FieldByName(f.Name).Set(v)
-			} else {
-				v = refReq.Field(i)
-			} // TODO : Fix image UUID setting
+			if refReq.Field(i).IsZero() && refUpd.FieldByName(f.Name).Kind() != reflect.Ptr {
+				continue
+			}
 
+			var v reflect.Value
+
+			switch refUpd.FieldByName(f.Name).Type().Kind() {
+			case reflect.Ptr:
+				v = refReq.Field(i)
+			default:
+				v = refReq.Field(i).Elem()
+			}
+
+			refUpd.FieldByName(f.Name).Set(v)
 		}
 
 		// Update user
@@ -194,6 +200,7 @@ func userPatchHandler(useCase user.UseCase) http.Handler {
 			return
 		}
 
+		// FIXME : do not return if image id is nil [bug]
 		// Encode response
 		if err := json.NewEncoder(rw).Encode(&requestUser); err != nil {
 			responseWriter.Write(http.StatusInternalServerError, err)
@@ -202,9 +209,17 @@ func userPatchHandler(useCase user.UseCase) http.Handler {
 	})
 }
 
-func MakeUserHandlers(r *mux.Router, n negroni.Negroni, useCase user.UseCase) {
-	// TODO : add HEAD, OPTIONS methods for /users/:id endpoint
+func userOptionsHandler(rw http.ResponseWriter, _ *http.Request) {
+	responseWriter := presenter.NewResponseWriter(rw)
+	responseWriter.SetHeaders(map[string]string{
+		"Allow": "GET, DELETE, PATCH, OPTIONS",
+	})
 
+	rw.WriteHeader(http.StatusOK)
+}
+
+// MakeUserHandlers sets up all user http handlers
+func MakeUserHandlers(r *mux.Router, n negroni.Negroni, useCase user.UseCase) {
 	// Create user
 	r.Handle(usersRoute, n.With(
 		negroni.Wrap(userCreateHandler(useCase)),
@@ -243,4 +258,10 @@ func MakeUserHandlers(r *mux.Router, n negroni.Negroni, useCase user.UseCase) {
 	)).Methods("PATCH").
 		Headers("Content-Type", "application/json").
 		Name("UserPatchHandler")
+
+	// users/:id OPTIONS handler
+	r.Handle(handler.MakeRegexURI(usersRoute, handler.UUIDRegex), n.With(
+		negroni.WrapFunc(userOptionsHandler),
+	)).Methods("OPTIONS").
+		Name("UserOptionsHandler")
 }

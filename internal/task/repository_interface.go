@@ -12,6 +12,7 @@ type Reader interface {
 	SelectByID(models.ID) (*models.Task, error)
 	SelectByUserID(models.ID) ([]*models.Task, error)
 	SelectByTeamID(models.ID) ([]*models.Task, error)
+	SelectBy(map[string]interface{}) ([]*models.Task, error)
 }
 
 type Writer interface {

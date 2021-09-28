@@ -7,6 +7,7 @@ type UseCase interface {
 	GetTaskByID(models.ID) (*models.Task, error)
 	GetTasksByUserID(models.ID) ([]*models.Task, error)
 	GetTasksByTeamID(models.ID) ([]*models.Task, error)
+	GetTasksBy(map[string]interface{}) ([]*models.Task, error)
 
 	CreateTask(*models.Task) error
 	UpdateTask(*models.Task) error

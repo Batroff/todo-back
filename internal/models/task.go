@@ -4,8 +4,8 @@ type Task struct {
 	ID       ID     `json:"id,omitempty"`
 	Title    string `json:"title,omitempty"`
 	Priority *uint  `json:"priority,omitempty"`
-	UserID   ID     `json:"user_id,omitempty"`
-	TeamID   *ID    `json:"team_id,omitempty"`
+	UserID   ID     `json:"id_user,omitempty"`
+	TeamID   *ID    `json:"id_team,omitempty"`
 }
 
 // NewTask returns new *Task, generated from params

@@ -38,6 +38,11 @@ func (s *Service) GetTasksByTeamID(id models.ID) ([]*models.Task, error) {
 	return s.rep.SelectByTeamID(id)
 }
 
+// GetTasksBy takes map with key = param name and value = param value and returns slice of *models.Task
+func (s *Service) GetTasksBy(pairs map[string]interface{}) ([]*models.Task, error) {
+	return s.rep.SelectBy(pairs)
+}
+
 // CreateTask takes *models.Task and inserts it into repository
 func (s *Service) CreateTask(t *models.Task) error {
 	return s.rep.Insert(t)

@@ -10,7 +10,7 @@ type User struct {
 	Email     string    `json:"email,omitempty"`
 	Password  string    `json:"password,omitempty"`
 	CreatedAt time.Time `json:"created_at,omitempty"`
-	ImageID   *ID       `json:"image_id"`
+	ImageID   *ID       `json:"id_image"`
 }
 
 type Users []User

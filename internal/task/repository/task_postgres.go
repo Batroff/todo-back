@@ -2,41 +2,45 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/batroff/todo-back/internal/models"
+	"github.com/batroff/todo-back/pkg/postgres"
 	"log"
+	"strings"
 )
 
 type TaskPostgres struct {
-	db *sql.DB
+	db     *sql.DB
+	helper *postgres.Helper
 }
 
 func NewTaskPostgres(db *sql.DB) *TaskPostgres {
 	return &TaskPostgres{
-		db: db,
+		db:     db,
+		helper: postgres.NewHelper(db),
 	}
 }
 
-func (taskPostgres *TaskPostgres) SelectAll() (tasks []*models.Task, err error) {
-	rows, err := taskPostgres.db.Query("SELECT * FROM task;")
-	if err != nil {
-		return nil, err
-	}
-
+func scanRows(rows *sql.Rows) (tasks []*models.Task, err error) {
 	for rows.Next() {
 		task := new(models.Task)
 
-		if err = rows.Scan(
+		err = rows.Scan(
 			&task.ID,
 			&task.Title,
 			&task.Priority,
 			&task.UserID,
 			&task.TeamID,
-		); err != nil {
+		)
+		if err == sql.ErrNoRows {
+			return nil, models.ErrNotFound
+		} else if err != nil {
 			return nil, err
 		}
 
 		tasks = append(tasks, task)
 	}
+
 	defer func(rows *sql.Rows) {
 		err := rows.Close()
 		if err != nil {
@@ -45,6 +49,15 @@ func (taskPostgres *TaskPostgres) SelectAll() (tasks []*models.Task, err error) 
 	}(rows)
 
 	return tasks, nil
+}
+
+func (taskPostgres *TaskPostgres) SelectAll() (tasks []*models.Task, err error) {
+	rows, err := taskPostgres.db.Query("SELECT * FROM task;")
+	if err != nil {
+		return nil, err
+	}
+
+	return scanRows(rows)
 }
 
 func (taskPostgres *TaskPostgres) SelectByID(id models.ID) (*models.Task, error) {
@@ -57,6 +70,7 @@ func (taskPostgres *TaskPostgres) SelectByID(id models.ID) (*models.Task, error)
 		&t.UserID,
 		&t.TeamID,
 	)
+
 	if err == sql.ErrNoRows {
 		return nil, models.ErrNotFound
 	} else if err != nil {
@@ -66,12 +80,51 @@ func (taskPostgres *TaskPostgres) SelectByID(id models.ID) (*models.Task, error)
 	return t, nil
 }
 
-func (taskPostgres *TaskPostgres) SelectByUserID(models.ID) ([]*models.Task, error) {
-	return nil, nil
+// SelectBy takes map of params and returns filtered []*models.Task
+// If param doesn't exist in repo returns error
+func (taskPostgres *TaskPostgres) SelectBy(pairs map[string]interface{}) (tasks []*models.Task, err error) {
+	if len(pairs) == 0 {
+		return taskPostgres.SelectAll()
+	}
+	whereQueries := make([]string, len(pairs))
+	whereValues := make([]interface{}, len(pairs))
+
+	i := 0
+	for k, v := range pairs {
+		if err = taskPostgres.helper.IsColExists("task", k); err != nil {
+			return nil, err
+		}
+
+		whereQueries[i] = fmt.Sprintf("%s = $%d", k, i+1)
+		whereValues[i] = v
+		i += 1
+	}
+
+	query := fmt.Sprintf("SELECT * FROM task WHERE %s", strings.Join(whereQueries, " AND "))
+	rows, err := taskPostgres.db.Query(query, whereValues...)
+	if err != nil {
+		return nil, err
+	}
+
+	return scanRows(rows)
 }
 
-func (taskPostgres *TaskPostgres) SelectByTeamID(models.ID) ([]*models.Task, error) {
-	return nil, nil
+func (taskPostgres *TaskPostgres) SelectByUserID(id models.ID) (tasks []*models.Task, err error) {
+	rows, err := taskPostgres.db.Query("SELECT * FROM task WHERE id_user = $1", id)
+	if err != nil {
+		return nil, err
+	}
+
+	return scanRows(rows)
+}
+
+func (taskPostgres *TaskPostgres) SelectByTeamID(id models.ID) (tasks []*models.Task, err error) {
+	rows, err := taskPostgres.db.Query("SELECT * FROM task WHERE id_team = $1", id)
+	if err != nil {
+		return nil, err
+	}
+
+	return scanRows(rows)
 }
 
 func (taskPostgres *TaskPostgres) Insert(task *models.Task) error {
@@ -88,11 +141,22 @@ func (taskPostgres *TaskPostgres) Insert(task *models.Task) error {
 	return nil
 }
 
-func (taskPostgres *TaskPostgres) Update(*models.Task) error {
+func (taskPostgres *TaskPostgres) Update(t *models.Task) error {
+	if _, err := taskPostgres.db.Exec(
+		"UPDATE task SET title = $1, priority = $2, id_team = $3 WHERE id_task = $4",
+		t.Title, t.Priority, t.TeamID, t.ID,
+	); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (taskPostgres *TaskPostgres) DeleteByID(models.ID) error {
+func (taskPostgres *TaskPostgres) DeleteByID(id models.ID) error {
+	if _, err := taskPostgres.db.Exec("DELETE FROM task WHERE id_task = $1", id); err != nil {
+		return err
+	}
+
 	return nil
 }
 

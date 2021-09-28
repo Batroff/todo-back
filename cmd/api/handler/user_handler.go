@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/batroff/todo-back/cmd/api/presenter"
 	"github.com/batroff/todo-back/internal/models"
 	"github.com/batroff/todo-back/internal/user"
@@ -52,9 +53,17 @@ func usersListHandler(useCase user.UseCase) http.Handler {
 
 		if err := r.ParseForm(); err != nil {
 			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
+			return
 		}
 
-		if email, ok := r.Form["email"]; ok || len(email) == 1 {
+		// Query list by email
+		// TODO : add more filter params
+		if email, ok := r.Form["email"]; ok {
+			if len(email) != 1 {
+				responseWriter.Write(http.StatusBadRequest, fmt.Errorf("%s: multiple emails query not implemented", presenter.ErrBadRequest))
+				return
+			}
+
 			u, err := useCase.FindUserByEmail(email[0])
 			if err == models.ErrNotFound {
 				responseWriter.Write(http.StatusOK, make([]string, 0))
@@ -173,26 +182,7 @@ func userPatchHandler(useCase user.UseCase) http.Handler {
 		// Update only requested fields
 		refReq := reflect.ValueOf(requestUser)
 		refUpd := reflect.ValueOf(u).Elem()
-
-		t := refReq.Type()
-		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
-
-			if refReq.Field(i).IsZero() && refUpd.FieldByName(f.Name).Kind() != reflect.Ptr {
-				continue
-			}
-
-			var v reflect.Value
-
-			switch refUpd.FieldByName(f.Name).Type().Kind() {
-			case reflect.Ptr:
-				v = refReq.Field(i)
-			default:
-				v = refReq.Field(i).Elem()
-			}
-
-			refUpd.FieldByName(f.Name).Set(v)
-		}
+		handler.ParseRequestFields(refReq, refUpd)
 
 		// Update user
 		if err := useCase.UpdateUser(u); err != nil {

@@ -15,31 +15,6 @@ import (
 
 const usersRoute = "/users"
 
-func userCreateHandler(useCase user.UseCase) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		responseWriter := presenter.NewResponseWriter(rw)
-
-		// Decoding request body
-		var u models.User
-		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
-			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
-			return
-		}
-
-		// Creating user
-		id, err := useCase.CreateUser(u.Login, u.Email, u.Password)
-		if err != nil {
-			responseWriter.Write(http.StatusInternalServerError, err)
-			return
-		}
-		u.ID = id
-
-		// Encode response
-		rw.Header().Set("Location", handler.MakeRegexURI(usersRoute, id.String()))
-		rw.WriteHeader(http.StatusCreated)
-	})
-}
-
 func usersListHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		responseWriter := presenter.NewResponseWriter(rw)
@@ -210,13 +185,6 @@ func userOptionsHandler(rw http.ResponseWriter, _ *http.Request) {
 
 // MakeUserHandlers sets up all user http handlers
 func MakeUserHandlers(r *mux.Router, n negroni.Negroni, useCase user.UseCase) {
-	// Create user
-	r.Handle(usersRoute, n.With(
-		negroni.Wrap(userCreateHandler(useCase)),
-	)).Methods("POST").
-		Headers("Content-Type", "application/json").
-		Name("UserCreateHandler")
-
 	// Get user list (opt: with query)
 	r.Handle(usersRoute, n.With(
 		negroni.Wrap(usersListHandler(useCase)),
@@ -231,26 +199,26 @@ func MakeUserHandlers(r *mux.Router, n negroni.Negroni, useCase user.UseCase) {
 	// End user list
 
 	// Get user by id
-	r.Handle(handler.MakeRegexURI(usersRoute, handler.UUIDRegex), n.With(
+	r.Handle(handler.MakeURI(usersRoute, handler.UUIDRegex), n.With(
 		negroni.Wrap(userGetByIDHandler(useCase)),
 	)).Methods("GET").
 		Name("UserGetByIDHandler")
 
 	// Delete user by id
-	r.Handle(handler.MakeRegexURI(usersRoute, handler.UUIDRegex), n.With(
+	r.Handle(handler.MakeURI(usersRoute, handler.UUIDRegex), n.With(
 		negroni.Wrap(userDeleteHandler(useCase)),
 	)).Methods("DELETE").
 		Name("UserDeleteHandler")
 
 	// Update user by id
-	r.Handle(handler.MakeRegexURI(usersRoute, handler.UUIDRegex), n.With(
+	r.Handle(handler.MakeURI(usersRoute, handler.UUIDRegex), n.With(
 		negroni.Wrap(userPatchHandler(useCase)),
 	)).Methods("PATCH").
 		Headers("Content-Type", "application/json").
 		Name("UserPatchHandler")
 
 	// users/:id OPTIONS handler
-	r.Handle(handler.MakeRegexURI(usersRoute, handler.UUIDRegex), n.With(
+	r.Handle(handler.MakeURI(usersRoute, handler.UUIDRegex), n.With(
 		negroni.WrapFunc(userOptionsHandler),
 	)).Methods("OPTIONS").
 		Name("UserOptionsHandler")

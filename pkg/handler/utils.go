@@ -11,7 +11,7 @@ import (
 
 const UUIDRegex = "{id:\\w{8}-(?:\\w{4}-){3}\\w{12}}"
 
-func MakeRegexURI(uriParams ...string) string {
+func MakeURI(uriParams ...string) string {
 	return strings.Join(uriParams, "/")
 }
 

@@ -61,7 +61,7 @@ func taskCreateHandler(useCase task.UseCase) http.Handler {
 		}
 
 		responseWriter.SetHeaders(map[string]string{
-			"Location": handler.MakeRegexURI(tasksRoute, t.ID.String()),
+			"Location": handler.MakeURI(tasksRoute, t.ID.String()),
 		})
 		rw.WriteHeader(http.StatusCreated)
 	})
@@ -207,7 +207,7 @@ func MakeTaskHandlers(r *mux.Router, n negroni.Negroni, useCase task.UseCase) {
 	// End get tasks list
 
 	// Get task by ID
-	r.Handle(handler.MakeRegexURI(tasksRoute, handler.UUIDRegex), n.With(
+	r.Handle(handler.MakeURI(tasksRoute, handler.UUIDRegex), n.With(
 		negroni.Wrap(taskGetHandler(useCase)),
 	)).Methods("GET").
 		Name("TaskGetHandler")
@@ -220,14 +220,14 @@ func MakeTaskHandlers(r *mux.Router, n negroni.Negroni, useCase task.UseCase) {
 		Name("TaskCreateHandler")
 
 	// Update task
-	r.Handle(handler.MakeRegexURI(tasksRoute, handler.UUIDRegex), n.With(
+	r.Handle(handler.MakeURI(tasksRoute, handler.UUIDRegex), n.With(
 		negroni.Wrap(taskUpdateHandler(useCase)),
 	)).Methods("PATCH").
 		Headers("Content-Type", "application/json").
 		Name("TaskUpdateHandler")
 
 	// Delete task
-	r.Handle(handler.MakeRegexURI(tasksRoute, handler.UUIDRegex), n.With(
+	r.Handle(handler.MakeURI(tasksRoute, handler.UUIDRegex), n.With(
 		negroni.Wrap(taskDeleteHandler(useCase)),
 	)).Methods("DELETE").
 		Name("TaskDeleteHandler")

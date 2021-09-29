@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"fmt"
 	"github.com/batroff/todo-back/internal/models"
 	"github.com/batroff/todo-back/internal/user"
 	"golang.org/x/crypto/bcrypt"
@@ -47,7 +46,6 @@ func (s *Service) CreateUser(login, email, password string) (id models.ID, err e
 	}
 
 	u := models.NewUser(login, email, string(hash))
-	fmt.Println(u)
 	return s.rep.Insert(u)
 }
 

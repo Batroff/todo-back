@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/batroff/todo-back/configs"
 	"github.com/batroff/todo-back/internal/auth/handler"
 	"github.com/batroff/todo-back/internal/auth/middleware"
 
@@ -25,12 +26,17 @@ import (
 )
 
 func main() {
-	// TODO: put secret to .env.local
-	if err := os.Setenv("secret", "secret"); err != nil {
+	config := &configs.Config{}
+	if err := config.LoadConfig(); err != nil {
+		log.Fatalf("loading config failed: %s", err.Error())
+	}
+
+	if err := os.Setenv("secret", config.Secret); err != nil {
 		log.Fatalf("Error: err %s", err.Error())
 	}
 
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "postgres", "root", "localhost", 5432, "postgres")
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
+		config.DBUser, config.DBPassword, config.DBHost, config.DBPort, config.DBName)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatalf("Error occured during db connection. err: %s", err.Error())
@@ -61,7 +67,7 @@ func main() {
 	http.Handle("/", r)
 
 	srv := &http.Server{
-		Addr:         "0.0.0.0:5000",
+		Addr:         fmt.Sprintf("%s:%d", config.AppHost, config.AppPort),
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 		Handler:      context.ClearHandler(http.DefaultServeMux),

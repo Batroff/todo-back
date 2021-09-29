@@ -2,6 +2,5 @@
 *.log
 
 # env
-flaskenv
 .idea
-__pycache__
+configs/*.env

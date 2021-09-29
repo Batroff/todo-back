@@ -3,9 +3,9 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/batroff/todo-back/cmd/api/presenter"
 	"github.com/batroff/todo-back/internal/models"
 	"github.com/batroff/todo-back/internal/user"
+	"github.com/batroff/todo-back/pkg/handler"
 	"github.com/batroff/todo-back/pkg/token"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
@@ -51,11 +51,11 @@ func isEmailValid(email string) error {
 
 func registerAuthHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		responseWriter := presenter.NewResponseWriter(rw)
+		responseWriter := handler.NewResponseWriter(rw)
 
 		var u models.User
 		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
-			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
+			responseWriter.Write(http.StatusBadRequest, models.ErrBadRequest)
 			return
 		}
 
@@ -89,12 +89,12 @@ func registerAuthHandler(useCase user.UseCase) http.Handler {
 
 func loginAuthHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		responseWriter := presenter.NewResponseWriter(rw)
+		responseWriter := handler.NewResponseWriter(rw)
 
 		// Decode request
-		var authReq presenter.AuthRequest
+		var authReq models.AuthRequest
 		if err := json.NewDecoder(r.Body).Decode(&authReq); err != nil {
-			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
+			responseWriter.Write(http.StatusBadRequest, models.ErrBadRequest)
 			return
 		}
 
@@ -108,7 +108,7 @@ func loginAuthHandler(useCase user.UseCase) http.Handler {
 		// Compare userdata
 		passwordErr := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(authReq.Password))
 		if authReq.Email != u.Email || passwordErr != nil {
-			responseWriter.Write(http.StatusUnauthorized, presenter.ErrUnauthorized)
+			responseWriter.Write(http.StatusUnauthorized, models.ErrUnauthorized)
 			return
 		}
 
@@ -133,7 +133,7 @@ func loginAuthHandler(useCase user.UseCase) http.Handler {
 }
 
 func logoutAuthHandler(rw http.ResponseWriter, r *http.Request) {
-	responseWriter := presenter.NewResponseWriter(rw)
+	responseWriter := handler.NewResponseWriter(rw)
 
 	_, err := r.Cookie("session_id")
 	if err != nil {

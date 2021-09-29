@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/batroff/todo-back/cmd/api/presenter"
 	"github.com/batroff/todo-back/internal/models"
 	"github.com/batroff/todo-back/internal/user"
 	"github.com/batroff/todo-back/pkg/handler"
@@ -17,7 +16,7 @@ const usersRoute = "/users"
 
 func usersListHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		responseWriter := presenter.NewResponseWriter(rw)
+		responseWriter := handler.NewResponseWriter(rw)
 
 		headers := map[string]string{
 			"Content-Type":  "application/json; charset=utf-8",
@@ -27,7 +26,7 @@ func usersListHandler(useCase user.UseCase) http.Handler {
 		responseWriter.SetHeaders(headers)
 
 		if err := r.ParseForm(); err != nil {
-			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
+			responseWriter.Write(http.StatusBadRequest, models.ErrBadRequest)
 			return
 		}
 
@@ -35,7 +34,7 @@ func usersListHandler(useCase user.UseCase) http.Handler {
 		// TODO : add more filter params
 		if email, ok := r.Form["email"]; ok {
 			if len(email) != 1 {
-				responseWriter.Write(http.StatusBadRequest, fmt.Errorf("%s: multiple emails query not implemented", presenter.ErrBadRequest))
+				responseWriter.Write(http.StatusBadRequest, fmt.Errorf("%s: multiple emails query not implemented", models.ErrBadRequest))
 				return
 			}
 
@@ -70,7 +69,7 @@ func usersListHandler(useCase user.UseCase) http.Handler {
 
 func userGetByIDHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		responseWriter := presenter.NewResponseWriter(rw)
+		responseWriter := handler.NewResponseWriter(rw)
 
 		headers := map[string]string{
 			"Content-Type":  "application/json; charset=utf-8",
@@ -102,12 +101,12 @@ func userGetByIDHandler(useCase user.UseCase) http.Handler {
 
 func userDeleteHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		responseWriter := presenter.NewResponseWriter(rw)
+		responseWriter := handler.NewResponseWriter(rw)
 
 		// SelectByID user id
 		id, err := handler.GetIDFromURI(r)
 		if err != nil {
-			responseWriter.Write(http.StatusInternalServerError, err)
+			responseWriter.Write(http.StatusBadRequest, err)
 			return
 		}
 
@@ -124,7 +123,7 @@ func userDeleteHandler(useCase user.UseCase) http.Handler {
 func userPatchHandler(useCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// ResponseWriter headers
-		responseWriter := presenter.NewResponseWriter(rw)
+		responseWriter := handler.NewResponseWriter(rw)
 
 		headers := map[string]string{
 			"Content-Type":  "application/json; charset=utf-8",
@@ -136,7 +135,7 @@ func userPatchHandler(useCase user.UseCase) http.Handler {
 		// SelectByID user id
 		id, err := handler.GetIDFromURI(r)
 		if err != nil {
-			responseWriter.Write(http.StatusInternalServerError, err)
+			responseWriter.Write(http.StatusBadRequest, err)
 			return
 		}
 
@@ -148,9 +147,9 @@ func userPatchHandler(useCase user.UseCase) http.Handler {
 		}
 
 		// Decode request
-		var requestUser presenter.RequestUser
+		var requestUser models.RequestUser
 		if err := json.NewDecoder(r.Body).Decode(&requestUser); err != nil {
-			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
+			responseWriter.Write(http.StatusBadRequest, models.ErrBadRequest)
 			return
 		}
 
@@ -175,7 +174,7 @@ func userPatchHandler(useCase user.UseCase) http.Handler {
 }
 
 func userOptionsHandler(rw http.ResponseWriter, _ *http.Request) {
-	responseWriter := presenter.NewResponseWriter(rw)
+	responseWriter := handler.NewResponseWriter(rw)
 	responseWriter.SetHeaders(map[string]string{
 		"Allow": "GET, DELETE, PATCH, OPTIONS",
 	})
@@ -199,26 +198,26 @@ func MakeUserHandlers(r *mux.Router, n negroni.Negroni, useCase user.UseCase) {
 	// End user list
 
 	// Get user by id
-	r.Handle(handler.MakeURI(usersRoute, handler.UUIDRegex), n.With(
+	r.Handle(handler.MakeURI(usersRoute, "{id}"), n.With(
 		negroni.Wrap(userGetByIDHandler(useCase)),
 	)).Methods("GET").
 		Name("UserGetByIDHandler")
 
 	// Delete user by id
-	r.Handle(handler.MakeURI(usersRoute, handler.UUIDRegex), n.With(
+	r.Handle(handler.MakeURI(usersRoute, "{id}"), n.With(
 		negroni.Wrap(userDeleteHandler(useCase)),
 	)).Methods("DELETE").
 		Name("UserDeleteHandler")
 
 	// Update user by id
-	r.Handle(handler.MakeURI(usersRoute, handler.UUIDRegex), n.With(
+	r.Handle(handler.MakeURI(usersRoute, "{id}"), n.With(
 		negroni.Wrap(userPatchHandler(useCase)),
 	)).Methods("PATCH").
 		Headers("Content-Type", "application/json").
 		Name("UserPatchHandler")
 
 	// users/:id OPTIONS handler
-	r.Handle(handler.MakeURI(usersRoute, handler.UUIDRegex), n.With(
+	r.Handle(handler.MakeURI(usersRoute, "{id}"), n.With(
 		negroni.WrapFunc(userOptionsHandler),
 	)).Methods("OPTIONS").
 		Name("UserOptionsHandler")

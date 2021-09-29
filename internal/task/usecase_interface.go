@@ -2,6 +2,8 @@ package task
 
 import "github.com/batroff/todo-back/internal/models"
 
+//go:generate mockgen -source=usecase_interface.go -destination=mock/usecase_mock.go
+
 type UseCase interface {
 	GetTasksList() ([]*models.Task, error)
 	GetTaskByID(models.ID) (*models.Task, error)

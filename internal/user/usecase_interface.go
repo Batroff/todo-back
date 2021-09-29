@@ -4,6 +4,8 @@ import (
 	"github.com/batroff/todo-back/internal/models"
 )
 
+//go:generate mockgen -source=usecase_interface.go -destination=mock/usecase_mock.go
+
 type UseCase interface {
 	GetUser(id models.ID) (*models.User, error)
 	FindUserByEmail(email string) (*models.User, error)

@@ -26,3 +26,10 @@ func NewUser(login, email, password string) *User {
 		ImageID:   nil,
 	}
 }
+
+type RequestUser struct {
+	Login    *string `json:"login,omitempty"`
+	Email    *string `json:"email,omitempty"`
+	Password *string `json:"password,omitempty"`
+	ImageID  *ID     `json:"image_id,omitempty"`
+}

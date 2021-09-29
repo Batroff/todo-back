@@ -3,12 +3,14 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/batroff/todo-back/cmd/api/handler"
-	"github.com/batroff/todo-back/cmd/api/middleware"
+	"github.com/batroff/todo-back/internal/auth/handler"
+	"github.com/batroff/todo-back/internal/auth/middleware"
 
+	taskHandler "github.com/batroff/todo-back/internal/task/handler"
 	taskRep "github.com/batroff/todo-back/internal/task/repository"
 	taskUseCase "github.com/batroff/todo-back/internal/task/usecase"
 
+	userHandler "github.com/batroff/todo-back/internal/user/handler"
 	userRep "github.com/batroff/todo-back/internal/user/repository"
 	userUseCase "github.com/batroff/todo-back/internal/user/usecase"
 
@@ -53,8 +55,8 @@ func main() {
 	apiV1 := r.PathPrefix("/api/v1/").Subrouter()
 
 	handler.MakeAuthHandlers(apiV1, userService)
-	handler.MakeUserHandlers(apiV1, *n, userService)
-	handler.MakeTaskHandlers(apiV1, *n, taskService)
+	userHandler.MakeUserHandlers(apiV1, *n, userService)
+	taskHandler.MakeTaskHandlers(apiV1, *n, taskService, userService)
 
 	http.Handle("/", r)
 

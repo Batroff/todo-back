@@ -1,7 +1,8 @@
-package presenter
+package handler
 
 import (
 	"encoding/json"
+	"github.com/batroff/todo-back/internal/models"
 	"log"
 	"net/http"
 )
@@ -29,10 +30,10 @@ func (w *ResponseWriter) Write(status int, body interface{}) {
 	if _, err := json.Marshal(body); err != nil {
 		w.writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.writer.WriteHeader(http.StatusInternalServerError)
-		if _, err := w.writer.Write([]byte(ErrNotImplementJsonMarshaller.Error())); err != nil {
+		if _, err := w.writer.Write([]byte(models.ErrNotImplementJsonMarshaller.Error())); err != nil {
 			log.Printf("unexpected error in ResponseWriter: %s", err)
 		}
-		log.Printf("error while marshalling response: %s", ErrNotImplementJsonMarshaller.Error())
+		log.Printf("error while marshalling response: %s", models.ErrNotImplementJsonMarshaller.Error())
 		return
 	}
 

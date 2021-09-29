@@ -3,9 +3,9 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/batroff/todo-back/cmd/api/presenter"
 	"github.com/batroff/todo-back/internal/models"
 	"github.com/batroff/todo-back/internal/task"
+	"github.com/batroff/todo-back/internal/user"
 	"github.com/batroff/todo-back/pkg/handler"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -19,7 +19,7 @@ const tasksRoute = "/tasks"
 
 func taskGetHandler(useCase task.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		responseWriter := presenter.NewResponseWriter(rw)
+		responseWriter := handler.NewResponseWriter(rw)
 
 		headers := map[string]string{
 			"Cache-Control": "no-store, no-cache, must-revalidate",
@@ -30,12 +30,15 @@ func taskGetHandler(useCase task.UseCase) http.Handler {
 
 		id, err := handler.GetIDFromURI(r)
 		if err != nil {
-			responseWriter.Write(http.StatusNotFound, err)
+			responseWriter.Write(http.StatusBadRequest, err)
 			return
 		}
 
 		t, err := useCase.GetTaskByID(id)
-		if err != nil {
+		if err == models.ErrNotFound {
+			responseWriter.Write(http.StatusNotFound, err)
+			return
+		} else if err != nil {
 			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
@@ -44,18 +47,22 @@ func taskGetHandler(useCase task.UseCase) http.Handler {
 	})
 }
 
-func taskCreateHandler(useCase task.UseCase) http.Handler {
+func taskCreateHandler(tCase task.UseCase, uCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		responseWriter := presenter.NewResponseWriter(rw)
+		responseWriter := handler.NewResponseWriter(rw)
 
-		var t *models.Task
+		var t = &models.Task{ID: models.NewID()}
 		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 			responseWriter.Write(http.StatusBadRequest, err)
 			return
 		}
 
-		t = models.NewTask(t.Title, t.Priority, t.UserID, t.TeamID)
-		if err := useCase.CreateTask(t); err != nil {
+		if _, err := uCase.GetUser(t.UserID); err != nil {
+			responseWriter.Write(http.StatusBadRequest, fmt.Errorf("user[%s] doesn't exist: %s", t.UserID, err))
+			return
+		}
+
+		if err := tCase.CreateTask(t); err != nil {
 			responseWriter.Write(http.StatusInternalServerError, err)
 			return
 		}
@@ -72,7 +79,7 @@ func getQueryFilterIDs(r *http.Request) (ids map[string]interface{}, err error) 
 
 	for k, v := range r.URL.Query() {
 		if len(v) != 1 {
-			return nil, fmt.Errorf("%s: expected key=value", presenter.ErrBadRequest)
+			return nil, fmt.Errorf("%s: expected key=value", models.ErrBadRequest)
 		} else if !strings.Contains(k, "id") {
 			continue
 		}
@@ -89,7 +96,7 @@ func getQueryFilterIDs(r *http.Request) (ids map[string]interface{}, err error) 
 
 func tasksListHandler(useCase task.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		responseWriter := presenter.NewResponseWriter(rw)
+		responseWriter := handler.NewResponseWriter(rw)
 		responseWriter.SetHeaders(map[string]string{
 			"Cache-Control": "no-store, no-cache, must-revalidate",
 			"Content-Type":  "application/json; charset=utf-8",
@@ -98,14 +105,14 @@ func tasksListHandler(useCase task.UseCase) http.Handler {
 
 		err := r.ParseForm()
 		if err != nil {
-			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
+			responseWriter.Write(http.StatusBadRequest, models.ErrBadRequest)
 			return
 		}
 
 		// Query list
 		filterIDs, err := getQueryFilterIDs(r)
 		if err != nil {
-			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
+			responseWriter.Write(http.StatusBadRequest, models.ErrBadRequest)
 			return
 		}
 
@@ -127,7 +134,7 @@ func tasksListHandler(useCase task.UseCase) http.Handler {
 
 func taskUpdateHandler(useCase task.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		responseWriter := presenter.NewResponseWriter(rw)
+		responseWriter := handler.NewResponseWriter(rw)
 		headers := map[string]string{
 			"Content-Type":  "application/json; charset=utf-8",
 			"Cache-Control": "no-store, no-cache, must-revalidate",
@@ -137,7 +144,7 @@ func taskUpdateHandler(useCase task.UseCase) http.Handler {
 
 		id, err := handler.GetIDFromURI(r)
 		if err != nil {
-			responseWriter.Write(http.StatusNotFound, err)
+			responseWriter.Write(http.StatusBadRequest, err)
 			return
 		}
 
@@ -147,9 +154,9 @@ func taskUpdateHandler(useCase task.UseCase) http.Handler {
 			return
 		}
 
-		var reqTask presenter.RequestTask
+		var reqTask models.RequestTask
 		if err := json.NewDecoder(r.Body).Decode(&reqTask); err != nil {
-			responseWriter.Write(http.StatusBadRequest, presenter.ErrBadRequest)
+			responseWriter.Write(http.StatusBadRequest, models.ErrBadRequest)
 			return
 		}
 
@@ -172,11 +179,11 @@ func taskUpdateHandler(useCase task.UseCase) http.Handler {
 
 func taskDeleteHandler(useCase task.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		responseWriter := presenter.NewResponseWriter(rw)
+		responseWriter := handler.NewResponseWriter(rw)
 
 		id, err := handler.GetIDFromURI(r)
 		if err != nil {
-			responseWriter.Write(http.StatusNotFound, err)
+			responseWriter.Write(http.StatusBadRequest, err)
 			return
 		}
 
@@ -189,15 +196,15 @@ func taskDeleteHandler(useCase task.UseCase) http.Handler {
 	})
 }
 
-func MakeTaskHandlers(r *mux.Router, n negroni.Negroni, useCase task.UseCase) {
+func MakeTaskHandlers(r *mux.Router, n negroni.Negroni, tCase task.UseCase, uCase user.UseCase) {
 	// Get tasks list (opt: with query)
 	r.Handle(tasksRoute, n.With(
-		negroni.Wrap(tasksListHandler(useCase)),
+		negroni.Wrap(tasksListHandler(tCase)),
 	)).Methods("GET").
 		Name("TaskListHandler")
 
 	r.Handle(tasksRoute, n.With(
-		negroni.Wrap(tasksListHandler(useCase)),
+		negroni.Wrap(tasksListHandler(tCase)),
 	)).Methods("GET").
 		Queries(
 			"id_user", "{id_user}",
@@ -207,28 +214,28 @@ func MakeTaskHandlers(r *mux.Router, n negroni.Negroni, useCase task.UseCase) {
 	// End get tasks list
 
 	// Get task by ID
-	r.Handle(handler.MakeURI(tasksRoute, handler.UUIDRegex), n.With(
-		negroni.Wrap(taskGetHandler(useCase)),
+	r.Handle(handler.MakeURI(tasksRoute, "{id}"), n.With(
+		negroni.Wrap(taskGetHandler(tCase)),
 	)).Methods("GET").
 		Name("TaskGetHandler")
 
 	// Create task
 	r.Handle(tasksRoute, n.With(
-		negroni.Wrap(taskCreateHandler(useCase)),
+		negroni.Wrap(taskCreateHandler(tCase, uCase)),
 	)).Methods("POST").
 		Headers("Content-Type", "application/json").
 		Name("TaskCreateHandler")
 
 	// Update task
-	r.Handle(handler.MakeURI(tasksRoute, handler.UUIDRegex), n.With(
-		negroni.Wrap(taskUpdateHandler(useCase)),
+	r.Handle(handler.MakeURI(tasksRoute, "{id}"), n.With(
+		negroni.Wrap(taskUpdateHandler(tCase)),
 	)).Methods("PATCH").
 		Headers("Content-Type", "application/json").
 		Name("TaskUpdateHandler")
 
 	// Delete task
-	r.Handle(handler.MakeURI(tasksRoute, handler.UUIDRegex), n.With(
-		negroni.Wrap(taskDeleteHandler(useCase)),
+	r.Handle(handler.MakeURI(tasksRoute, "{id}"), n.With(
+		negroni.Wrap(taskDeleteHandler(tCase)),
 	)).Methods("DELETE").
 		Name("TaskDeleteHandler")
 }

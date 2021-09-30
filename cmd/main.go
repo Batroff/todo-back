@@ -11,6 +11,10 @@ import (
 	taskRep "github.com/batroff/todo-back/internal/task/repository"
 	taskUseCase "github.com/batroff/todo-back/internal/task/usecase"
 
+	todoHandler "github.com/batroff/todo-back/internal/todo/handler"
+	todoRep "github.com/batroff/todo-back/internal/todo/repository"
+	todoUseCase "github.com/batroff/todo-back/internal/todo/usecase"
+
 	userHandler "github.com/batroff/todo-back/internal/user/handler"
 	userRep "github.com/batroff/todo-back/internal/user/repository"
 	userUseCase "github.com/batroff/todo-back/internal/user/usecase"
@@ -50,8 +54,12 @@ func main() {
 
 	userRepo := userRep.NewUserMySQL(db)
 	userService := userUseCase.NewService(userRepo)
+
 	taskRepo := taskRep.NewTaskPostgres(db)
 	taskService := taskUseCase.NewService(taskRepo)
+
+	todoRepo := todoRep.NewTodoPostgres(db)
+	todoService := todoUseCase.NewService(todoRepo)
 
 	r := mux.NewRouter()
 	n := negroni.New(
@@ -63,6 +71,7 @@ func main() {
 	handler.MakeAuthHandlers(apiV1, userService)
 	userHandler.MakeUserHandlers(apiV1, *n, userService)
 	taskHandler.MakeTaskHandlers(apiV1, *n, taskService, userService)
+	todoHandler.MakeTodoHandlers(apiV1, *n, todoService, taskService)
 
 	http.Handle("/", r)
 

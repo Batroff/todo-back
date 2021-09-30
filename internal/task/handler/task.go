@@ -51,7 +51,7 @@ func taskCreateHandler(tCase task.UseCase, uCase user.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		responseWriter := handler.NewResponseWriter(rw)
 
-		var t = &models.Task{ID: models.NewID()}
+		var t *models.Task
 		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 			responseWriter.Write(http.StatusBadRequest, err)
 			return

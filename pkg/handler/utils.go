@@ -6,13 +6,14 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strings"
 )
 
-const UUIDRegex = "{id:\\w{8}-(?:\\w{4}-){3}\\w{12}}"
-
 func MakeURI(uriParams ...string) string {
-	return strings.Join(uriParams, "/")
+	rawURI := strings.Join(uriParams, "/")
+	re := regexp.MustCompile("/{2,}")
+	return re.ReplaceAllString(rawURI, "/")
 }
 
 func GetIDFromURI(r *http.Request) (models.ID, error) {

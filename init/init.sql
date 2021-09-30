@@ -62,9 +62,9 @@ CREATE TABLE IF NOT EXISTS team
 CREATE TABLE IF NOT EXISTS todo
 (
 	id_todo uuid NOT NULL,
+    title varchar(255),
 	text varchar(255) NOT NULL,
-	id_complete boolean NOT NULL,
-	title varchar(255),
+	complete boolean NOT NULL,
 	id_task uuid NOT NULL,
 	PRIMARY KEY (id_todo)
 ) WITHOUT OIDS;

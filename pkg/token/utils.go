@@ -32,6 +32,8 @@ func ExtractToken(r *http.Request) (string, error) {
 	return cookie.Value, nil
 }
 
+// ParseToken parses token from *http.Request
+// Extracts token from session_id cookie
 func ParseToken(r *http.Request) (*jwt.Token, error) {
 	tokenString, err := ExtractToken(r)
 	if err != nil {
@@ -52,6 +54,8 @@ func ParseToken(r *http.Request) (*jwt.Token, error) {
 	return token, nil
 }
 
+// IsTokenValid checks token data:
+// Expiration time, method, etc.
 func IsTokenValid(r *http.Request) (bool, error) {
 	token, err := ParseToken(r)
 	if err != nil {

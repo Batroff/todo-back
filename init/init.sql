@@ -180,7 +180,7 @@ COMMENT ON COLUMN team.id_team IS 'Суррогатный ключ';
 COMMENT ON COLUMN team.name IS 'Название группы';
 COMMENT ON COLUMN todo.id_todo IS 'Суррогатный ключ';
 COMMENT ON COLUMN todo.text IS 'Текст подзадачи';
-COMMENT ON COLUMN todo.id_complete IS 'Выполнена ли подзадача';
+COMMENT ON COLUMN todo.complete IS 'Выполнена ли подзадача';
 COMMENT ON COLUMN todo.title IS 'Заголовок подзадачи';
 COMMENT ON COLUMN todo.id_task IS 'Внешний ключ';
 COMMENT ON COLUMN users.id_user IS 'Суррогатный ключ';

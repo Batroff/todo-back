@@ -7,3 +7,10 @@ type Todo struct {
 	Complete bool    `json:"complete,omitempty"`
 	TaskID   ID      `json:"id_task,omitempty"`
 }
+
+type RequestTodo struct {
+	Title    *string `json:"title"`
+	Text     *string `json:"text,omitempty"`
+	Complete *bool   `json:"complete,omitempty"`
+	TaskID   *ID     `json:"id_task,omitempty"`
+}

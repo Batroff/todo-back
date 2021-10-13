@@ -12,10 +12,11 @@ CREATE TABLE IF NOT EXISTS annotation
 ) WITHOUT OIDS;
 
 
-CREATE TABLE IF NOT EXISTS client_team_xref
+CREATE TABLE IF NOT EXISTS users_team_xref
 (
 	id_user uuid NOT NULL,
-	id_team uuid NOT NULL
+	id_team uuid NOT NULL,
+	PRIMARY KEY (id_user, id_team)
 ) WITHOUT OIDS;
 
 
@@ -109,7 +110,7 @@ ALTER TABLE todo
 ;
 
 
-ALTER TABLE client_team_xref
+ALTER TABLE users_team_xref
 	ADD FOREIGN KEY (id_team)
 	REFERENCES team (id_team)
 	ON UPDATE RESTRICT
@@ -133,7 +134,7 @@ ALTER TABLE annotation
 ;
 
 
-ALTER TABLE client_team_xref
+ALTER TABLE users_team_xref
 	ADD FOREIGN KEY (id_user)
 	REFERENCES users (id_user)
 	ON UPDATE RESTRICT
@@ -163,8 +164,8 @@ COMMENT ON COLUMN annotation.id_annotation IS 'Суррогатный ключ';
 COMMENT ON COLUMN annotation.text IS 'Содержание комментария';
 COMMENT ON COLUMN annotation.id_task IS 'Внешний ключ';
 COMMENT ON COLUMN annotation.id_user IS 'Внешний ключ';
-COMMENT ON COLUMN client_team_xref.id_user IS 'Суррогатный ключ';
-COMMENT ON COLUMN client_team_xref.id_team IS 'Суррогатный ключ';
+COMMENT ON COLUMN users_team_xref.id_user IS 'Суррогатный ключ';
+COMMENT ON COLUMN users_team_xref.id_team IS 'Суррогатный ключ';
 COMMENT ON COLUMN image.id_image IS 'Суррогатный ключ';
 COMMENT ON COLUMN invitation.id_invitation IS 'Суррогатный ключ';
 COMMENT ON COLUMN invitation.email IS 'Электронаая почта приглашённого';

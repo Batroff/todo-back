@@ -4,8 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/batroff/todo-back/configs"
-	"github.com/batroff/todo-back/internal/auth/handler"
-	"github.com/batroff/todo-back/internal/auth/middleware"
+
+	authHandler "github.com/batroff/todo-back/internal/auth/handler"
+	authMiddleware "github.com/batroff/todo-back/internal/auth/middleware"
 
 	taskHandler "github.com/batroff/todo-back/internal/task/handler"
 	taskRep "github.com/batroff/todo-back/internal/task/repository"
@@ -63,12 +64,12 @@ func main() {
 
 	r := mux.NewRouter()
 	n := negroni.New(
-		negroni.HandlerFunc(middleware.Auth),
+		negroni.HandlerFunc(authMiddleware.Auth),
 	)
 
 	apiV1 := r.PathPrefix("/api/v1/").Subrouter()
 
-	handler.MakeAuthHandlers(apiV1, userService)
+	authHandler.MakeAuthHandlers(apiV1, userService)
 	userHandler.MakeUserHandlers(apiV1, *n, userService)
 	taskHandler.MakeTaskHandlers(apiV1, *n, taskService, userService)
 	todoHandler.MakeTodoHandlers(apiV1, *n, todoService, taskService)

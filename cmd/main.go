@@ -20,6 +20,13 @@ import (
 	userRep "github.com/batroff/todo-back/internal/user/repository"
 	userUseCase "github.com/batroff/todo-back/internal/user/usecase"
 
+	teamHandler "github.com/batroff/todo-back/internal/team/handler"
+	teamRep "github.com/batroff/todo-back/internal/team/repository"
+	teamUseCase "github.com/batroff/todo-back/internal/team/usecase"
+
+	relRep "github.com/batroff/todo-back/internal/team_relation_maker/repository"
+	relUseCase "github.com/batroff/todo-back/internal/team_relation_maker/usecase"
+
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -62,6 +69,12 @@ func main() {
 	todoRepo := todoRep.NewTodoPostgres(db)
 	todoService := todoUseCase.NewService(todoRepo)
 
+	relRepo := relRep.NewTeamRelationMakerPostgres(db)
+	relService := relUseCase.NewService(relRepo)
+
+	teamRepo := teamRep.NewTeamPostgres(db)
+	teamService := teamUseCase.NewService(teamRepo)
+
 	r := mux.NewRouter()
 	n := negroni.New(
 		negroni.HandlerFunc(authMiddleware.Auth),
@@ -73,6 +86,7 @@ func main() {
 	userHandler.MakeUserHandlers(apiV1, *n, userService)
 	taskHandler.MakeTaskHandlers(apiV1, *n, taskService, userService)
 	todoHandler.MakeTodoHandlers(apiV1, *n, todoService, taskService)
+	teamHandler.MakeTeamHandlers(apiV1, *n, teamService, relService, userService)
 
 	http.Handle("/", r)
 

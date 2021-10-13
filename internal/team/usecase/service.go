@@ -22,6 +22,8 @@ func (s *Service) SelectTeamsList() ([]*models.Team, error) {
 }
 
 func (s *Service) CreateTeam(t *models.Team) error {
+	t.ID = models.NewID()
+
 	return s.rep.Insert(t)
 }
 

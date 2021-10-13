@@ -439,7 +439,7 @@ func TestTeamRelationMakerPostgres_DeleteByIDs(t *testing.T) {
 	}{
 		{
 			name:       "OK",
-			inputQuery: `DELETE * FROM users_team_xref WHERE id_team = $1 AND id_user = $2;`,
+			inputQuery: `DELETE FROM users_team_xref WHERE id_team = $1 AND id_user = $2;`,
 			inputArgs: []driver.Value{
 				testTeamID,
 				testUserID,
@@ -456,7 +456,7 @@ func TestTeamRelationMakerPostgres_DeleteByIDs(t *testing.T) {
 		},
 		{
 			name:       "Exec error",
-			inputQuery: `DELETE * FROM users_team_xref WHERE id_team = $1 AND id_user = $2;`,
+			inputQuery: `DELETE FROM users_team_xref WHERE id_team = $1 AND id_user = $2;`,
 			inputArgs: []driver.Value{
 				testTeamID,
 				testUserID,

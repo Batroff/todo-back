@@ -79,7 +79,16 @@ func (relMaker *TeamRelationMakerPostgres) Insert(rel *models.UserTeamRel) error
 }
 
 func (relMaker *TeamRelationMakerPostgres) DeleteByIDs(teamID, userID models.ID) error {
-	if _, err := relMaker.db.Exec("DELETE * FROM users_team_xref WHERE id_team = $1 AND id_user = $2;", teamID, userID); err != nil {
+	if _, err := relMaker.db.Exec("DELETE FROM users_team_xref WHERE id_team = $1 AND id_user = $2;", teamID, userID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// DeleteByTeamID TODO : add tests
+func (relMaker *TeamRelationMakerPostgres) DeleteByTeamID(id models.ID) error {
+	if _, err := relMaker.db.Exec("DELETE FROM users_team_xref WHERE id_team = $1;", id); err != nil {
 		return err
 	}
 

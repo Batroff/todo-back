@@ -34,3 +34,7 @@ func (s *Service) CreateRelation(rel *models.UserTeamRel) error {
 func (s *Service) DeleteRelationByIDs(teamID, userID models.ID) error {
 	return s.rep.DeleteByIDs(teamID, userID)
 }
+
+func (s *Service) DeleteRelationsByTeamID(id models.ID)	error {
+	return s.rep.DeleteByTeamID(id)
+}

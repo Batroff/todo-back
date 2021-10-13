@@ -16,4 +16,5 @@ type RepositoryReader interface {
 type RepositoryWriter interface {
 	Insert(*models.UserTeamRel) error
 	DeleteByIDs(teamID, userID models.ID) error
+	DeleteByTeamID(id models.ID) error
 }

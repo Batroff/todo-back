@@ -91,7 +91,6 @@ func teamGetHandler(teamCase team.UseCase) http.Handler {
 	})
 }
 
-// TODO: add tests
 func teamDeleteHandler(teamCase team.UseCase, relCase relMaker.UseCase) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		responseWriter := handler.NewResponseWriter(rw)

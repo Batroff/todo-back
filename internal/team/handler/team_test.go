@@ -279,6 +279,49 @@ func Test_TeamDeleteHandler(t *testing.T) {
 			expectedBody:   "",
 			expectedStatus: http.StatusNoContent,
 		},
+		{
+			name:    "OK: without delete relations",
+			queryID: queryID,
+			teamMock: func(mock *mockTeam.MockUseCase, id models.ID) {
+				mock.EXPECT().DeleteTeam(id).Return(nil)
+			},
+			relMock: func(mock *mockRel.MockUseCase, id models.ID) {
+				mock.EXPECT().SelectRelationsByTeamID(id).Return(nil, models.ErrNotFound)
+			},
+			expectedBody:   "",
+			expectedStatus: http.StatusNoContent,
+		},
+		{
+			name: "Bad request: Invalid ID",
+			queryID: testUtils.TestID{
+				Input: "invalid",
+			},
+			teamMock:       func(useCase *mockTeam.MockUseCase, id models.ID) {},
+			relMock:        func(useCase *mockRel.MockUseCase, id models.ID) {},
+			expectedBody:   fmt.Sprintf("%s: %s", models.ErrBadRequest, "invalid UUID length: 7"),
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:     "Finding relations internal error",
+			queryID:  queryID,
+			teamMock: func(useCase *mockTeam.MockUseCase, id models.ID) {},
+			relMock: func(useCase *mockRel.MockUseCase, id models.ID) {
+				useCase.EXPECT().SelectRelationsByTeamID(id).Return(nil, errors.New("internal error"))
+			},
+			expectedBody:   "internal error",
+			expectedStatus: http.StatusInternalServerError,
+		},
+		{
+			name:     "Deleting relations internal error",
+			queryID:  queryID,
+			teamMock: func(useCase *mockTeam.MockUseCase, id models.ID) {},
+			relMock: func(useCase *mockRel.MockUseCase, id models.ID) {
+				useCase.EXPECT().SelectRelationsByTeamID(id).Return([]*models.UserTeamRel{}, nil)
+				useCase.EXPECT().DeleteRelationsByTeamID(id).Return(errors.New("internal error"))
+			},
+			expectedBody:   "internal error",
+			expectedStatus: http.StatusInternalServerError,
+		},
 	}
 
 	for _, testCase := range testTable {
